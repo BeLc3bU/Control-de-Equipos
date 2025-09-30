@@ -11,8 +11,8 @@ Una aplicación de escritorio desarrollada en Python para gestionar el flujo de 
 *   **Flujo de Trabajo Completo:** Gestiona el ciclo de vida de un equipo a través de 4 etapas: **Entrada**, **Trabajo**, **Cierre** y **Salida**.
 *   **Registro de Entrada Detallado:** Captura `nombre`, `PN`, `SN`, `estado`, `Nº OT`, `Nº DR`, `observaciones` y el documento `SL2000`.
 *   **Panel de Gestión Centralizado:** Al hacer doble clic en un equipo, se abre una ventana con pestañas para:
-    *   **Trabajo y Fotos:** Actualizar el estado de salida (`Útil`/`Reparable`), añadir observaciones y subir múltiples fotos del trabajo realizado.
-    *   **Cierre de Equipo:** Rellenar un formulario de cierre con `destino`, `horas de trabajo`, etc., y marcar el equipo como "cerrado".
+    *   **Pestaña de Trabajo:** Permite actualizar el estado de salida, añadir observaciones, subir múltiples tipos de archivos (`tarjetas`, `fotos`, `documentación`), registrar un **historial cronológico de intervenciones** y abrir un formulario para **solicitar material** por correo.
+    *   **Pestaña de Cierre:** Rellenar un formulario de cierre con `destino`, `horas de trabajo`, etc., y marcar el equipo como "cerrado".
     *   **Notificación por Correo:** Enviar automáticamente un resumen del formulario de cierre por email (configurable vía SMTP).
     *   **Documentación Final:** Adjuntar el `Certificado CAT` (para equipos 'Útiles') o el `DR Final` (para equipos 'Reparables').
     *   **Salida de Inventario:** Marcar el equipo como fuera de inventario, registrando la fecha de salida.

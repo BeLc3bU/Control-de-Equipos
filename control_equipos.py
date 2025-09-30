@@ -77,6 +77,7 @@ class Database:
             doc_entrada TEXT,
             fotos TEXT,
             estado_salida TEXT,
+            log_trabajo TEXT,
             obs_salida TEXT,
             cerrado INTEGER DEFAULT 0,
             fecha_cierre TEXT,
@@ -425,7 +426,7 @@ class ManageEquipmentWindow(tk.Toplevel):
 
         # Tab 2: Trabajo y Fotos
         work_tab = ttk.Frame(self.notebook, padding="10")
-        self.notebook.add(work_tab, text='Trabajo / Fotos')
+        self.notebook.add(work_tab, text='Trabajo')
         self.populate_work_tab(work_tab)
 
         # Tab 3: Cierre y Documentación Final
@@ -459,45 +460,86 @@ class ManageEquipmentWindow(tk.Toplevel):
         obs_text.config(state="disabled")
         obs_text.grid(row=len(fields), column=1, sticky=tk.W, padx=5, pady=2)
         
-        docs_frame = ttk.LabelFrame(tab, text="Documentos Adjuntos", padding="10")
+        # --- Frame para la lista unificada de documentos ---
+        docs_frame = ttk.LabelFrame(tab, text="Documentos Adjuntos (doble clic para abrir)", padding="10")
         docs_frame.pack(fill=tk.X, pady=10)
         
-        docs = {
-            "Doc. Entrada (SL2000)": self.data['doc_entrada'],
-            "Certificado (CAT)": self.data['certificado_cat'],
-            "DR Final": self.data['defect_report_final']
-        }
-        for label, path in docs.items():
-            if path:
-                btn = ttk.Button(docs_frame, text=f"Abrir {label}", command=lambda p=path: open_file(p))
-                btn.pack(anchor=tk.W, pady=2)
+        self.docs_listbox = tk.Listbox(docs_frame, height=8)
+        self.docs_listbox.pack(fill=tk.BOTH, expand=True)
+        self.docs_listbox.bind("<Double-1>", lambda e: open_file(self.docs_listbox.get(self.docs_listbox.curselection())))
         
-        ttk.Label(docs_frame, text="\nFotos de trabajo:").pack(anchor=tk.W, pady=(10,2))
-        self.photo_listbox = tk.Listbox(docs_frame, height=5)
-        self.photo_listbox.pack(fill=tk.X, expand=True)
-        self.photo_listbox.bind("<Double-1>", lambda e: open_file(self.photo_listbox.get(self.photo_listbox.curselection())))
-        self.refresh_photo_list()
+        self.refresh_docs_list()
+
+    def refresh_docs_list(self):
+        """Recarga la lista unificada de todos los documentos del equipo."""
+        self.docs_listbox.delete(0, tk.END)
+        
+        all_docs = []
+        if self.data['doc_entrada']: all_docs.append(self.data['doc_entrada'])
+        all_docs.extend(json.loads(self.data['fotos'] or '[]'))
+        if self.data['certificado_cat']: all_docs.append(self.data['certificado_cat'])
+        if self.data['defect_report_final']: all_docs.append(self.data['defect_report_final'])
+
+        for doc_path in all_docs:
+            self.docs_listbox.insert(tk.END, doc_path)
 
     def populate_work_tab(self, tab):
         """Permite actualizar estado de salida, observaciones y añadir fotos."""
-        frame = ttk.LabelFrame(tab, text="Actualizar Trabajo", padding="10")
-        frame.pack(fill=tk.BOTH, expand=True)
+        # Frame principal para la pestaña
+        main_work_frame = ttk.Frame(tab)
+        main_work_frame.pack(fill=tk.BOTH, expand=True)
+        main_work_frame.columnconfigure(0, weight=1)
+        main_work_frame.rowconfigure(1, weight=1)
 
-        ttk.Label(frame, text="Estado de Salida:").grid(row=0, column=0, sticky=tk.W, pady=5)
-        self.estado_salida_combo = ttk.Combobox(frame, values=["", "Útil", "Reparable"], state="readonly")
+        # Frame superior para estado y observaciones
+        top_frame = ttk.LabelFrame(main_work_frame, text="Actualizar Estado y Observaciones", padding="10")
+        top_frame.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+        top_frame.columnconfigure(1, weight=1)
+
+        ttk.Label(top_frame, text="Estado de Salida:").grid(row=0, column=0, sticky=tk.W, pady=5, padx=5)
+        self.estado_salida_combo = ttk.Combobox(top_frame, values=["", "Útil", "Reparable"], state="readonly")
         self.estado_salida_combo.set(self.data['estado_salida'] or "")
-        self.estado_salida_combo.grid(row=0, column=1, sticky=tk.EW, pady=5)
+        self.estado_salida_combo.grid(row=0, column=1, sticky=tk.EW, pady=5, padx=5)
 
-        ttk.Label(frame, text="Observaciones de Salida:").grid(row=1, column=0, sticky=tk.NW, pady=5)
-        self.obs_salida_text = tk.Text(frame, height=5)
+        ttk.Label(top_frame, text="Observaciones de Salida:").grid(row=1, column=0, sticky=tk.NW, pady=5, padx=5)
+        self.obs_salida_text = tk.Text(top_frame, height=4)
         self.obs_salida_text.insert("1.0", self.data['obs_salida'] or "")
-        self.obs_salida_text.grid(row=1, column=1, sticky=tk.EW, pady=5)
+        self.obs_salida_text.grid(row=1, column=1, sticky=tk.EW, pady=5, padx=5)
 
-        ttk.Button(frame, text="Guardar Cambios de Trabajo", command=self.save_work_changes).grid(row=2, column=1, sticky=tk.E, pady=10)
+        ttk.Button(top_frame, text="Guardar Cambios", command=self.save_work_changes).grid(row=2, column=1, sticky=tk.E, pady=10, padx=5)
 
-        photo_frame = ttk.LabelFrame(tab, text="Añadir Fotos", padding="10")
-        photo_frame.pack(fill=tk.X, pady=10)
-        ttk.Button(photo_frame, text="Añadir Archivos de Foto...", command=self.add_photos).pack()
+        # Frame para el historial de trabajo
+        log_frame = ttk.LabelFrame(main_work_frame, text="Historial de Intervenciones", padding="10")
+        log_frame.grid(row=1, column=0, sticky="nsew", pady=(0, 10))
+        log_frame.columnconfigure(0, weight=1)
+        log_frame.rowconfigure(0, weight=1) # El historial crece
+        log_frame.rowconfigure(1, weight=0) # La nueva entrada no
+
+        self.log_display = tk.Text(log_frame, height=8, state="disabled", background="#f0f0f0")
+        self.log_display.grid(row=0, column=0, columnspan=2, sticky="nsew", pady=5)
+        self.log_display.insert("1.0", self.data['log_trabajo'] or "No hay intervenciones registradas.")
+
+        self.new_log_entry = tk.Text(log_frame, height=3)
+        self.new_log_entry.grid(row=1, column=0, sticky="ew", pady=5)
+        ttk.Button(log_frame, text="Añadir al Historial", command=self.save_log_entry).grid(row=1, column=1, sticky="s", padx=5, pady=5)
+
+        # Frame inferior para acciones
+        actions_frame = ttk.Frame(main_work_frame)
+        actions_frame.grid(row=2, column=0, sticky="ew")
+
+        # Frame para añadir archivos
+        file_frame = ttk.LabelFrame(actions_frame, text="Añadir Archivos", padding="10")
+        file_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
+        
+        ttk.Button(file_frame, text="Añadir Tarjeta de Entrada", command=lambda: self.add_files("Seleccionar Tarjeta de Entrada", [("Todos los archivos", "*.*")])).pack(anchor=tk.W, pady=2, fill=tk.X)
+        ttk.Button(file_frame, text="Añadir Documentación Escaneada", command=lambda: self.add_files("Seleccionar Documentación", [("PDF, Imágenes", "*.pdf *.jpg *.png"), ("Todos los archivos", "*.*")])).pack(anchor=tk.W, pady=2, fill=tk.X)
+        ttk.Button(file_frame, text="Añadir Fotos", command=lambda: self.add_files("Seleccionar Fotos", [("Archivos de Imagen", "*.jpg *.jpeg *.png *.gif")])).pack(anchor=tk.W, pady=2, fill=tk.X)
+        ttk.Button(file_frame, text="Añadir Tarjeta de Salida", command=lambda: self.add_files("Seleccionar Tarjeta de Salida", [("Todos los archivos", "*.*")])).pack(anchor=tk.W, pady=2, fill=tk.X)
+
+        # Frame para solicitud de material
+        material_frame = ttk.LabelFrame(actions_frame, text="Materiales", padding="10")
+        material_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        ttk.Button(material_frame, text="Solicitar Material", command=self.open_material_request).pack(pady=2, fill=tk.BOTH, expand=True)
 
     def populate_close_tab(self, tab):
         """Formulario de cierre y subida de documentos finales."""
@@ -562,34 +604,54 @@ class ManageEquipmentWindow(tk.Toplevel):
             messagebox.showinfo("Éxito", "Cambios de trabajo guardados.")
             self.load_data() # Recargar datos
 
-    def add_photos(self):
-        paths = filedialog.askopenfilenames(title="Seleccionar fotos", filetypes=[("Image Files", "*.jpg *.jpeg *.png *.gif")])
+    def save_log_entry(self):
+        """Añade una nueva entrada al historial de trabajo."""
+        new_entry = self.new_log_entry.get("1.0", tk.END).strip()
+        if not new_entry:
+            return
+
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+        formatted_entry = f"--- {timestamp} ---\n{new_entry}\n\n"
+
+        current_log = self.data['log_trabajo'] or ""
+        updated_log = formatted_entry + current_log
+
+        query = "UPDATE equipos SET log_trabajo = ? WHERE id = ?"
+        if db.execute_query(query, (updated_log, self.record_id)) is not None:
+            self.new_log_entry.delete("1.0", tk.END)
+            self.log_display.config(state="normal")
+            self.log_display.delete("1.0", tk.END)
+            self.log_display.insert("1.0", updated_log)
+            self.log_display.config(state="disabled")
+            self.load_data() # Recargar datos para que self.data esté actualizado
+            messagebox.showinfo("Éxito", "Intervención añadida al historial.")
+
+    def add_files(self, title, filetypes):
+        """Añade archivos genéricos a la lista de 'fotos' del equipo."""
+        paths = filedialog.askopenfilenames(title=title, filetypes=filetypes)
         if not paths:
             return
         
-        current_photos = json.loads(self.data['fotos'] or '[]')
+        current_files = json.loads(self.data['fotos'] or '[]')
         
         for path in paths:
             new_path = copy_document(path, self.data['pn'], self.data['sn'], "trabajo")
-            if new_path not in current_photos:
-                current_photos.append(new_path)
+            if new_path not in current_files:
+                current_files.append(new_path)
         
         query = "UPDATE equipos SET fotos = ? WHERE id = ?"
-        if db.execute_query(query, (json.dumps(current_photos), self.record_id)) is not None:
-            messagebox.showinfo("Éxito", f"{len(paths)} foto(s) añadida(s).")
+        if db.execute_query(query, (json.dumps(current_files), self.record_id)) is not None:
+            messagebox.showinfo("Éxito", f"{len(paths)} archivo(s) añadido(s).")
             self.load_data()
-            self.refresh_photo_list()
+            self.refresh_docs_list()
 
-    def refresh_photo_list(self):
-        self.photo_listbox.delete(0, tk.END)
-        photos = json.loads(self.data['fotos'] or '[]')
-        for photo_path in photos:
-            self.photo_listbox.insert(tk.END, photo_path)
+    def open_material_request(self):
+        MaterialRequestWindow(self, self.data)
 
     def save_and_close(self):
         self.load_data() # Asegurarse de tener el último estado
         if not self.data['estado_salida']:
-            messagebox.showerror("Validación Fallida", "Debe definir un 'Estado de Salida' en la pestaña 'Trabajo / Fotos' antes de cerrar.")
+            messagebox.showerror("Validación Fallida", "Debe definir un 'Estado de Salida' en la pestaña 'Trabajo' antes de cerrar.")
             return
 
         data_to_save = {key: entry.get().strip() for key, entry in self.close_entries.items()}
@@ -615,23 +677,23 @@ class ManageEquipmentWindow(tk.Toplevel):
             return
         
         subject = f"Cierre de Equipo - OT {self.data['numero_ot']} - SN {self.data['sn']}"
-        body = f"""
-        Se ha cerrado el trabajo para el siguiente equipo:
         
-        - Nombre: {self.data['nombre_equipo']}
-        - PN/SN: {self.data['pn']} / {self.data['sn']}
-        - Orden Técnica (OT): {self.data['numero_ot']}
-        - Estado Final: {self.data['estado_salida']}
-        - Horas de Trabajo: {self.data['horas_trabajo']}
-        - Destino: {self.data['destino']}
-        - Contenedor: {'Sí' if self.data['contenedor'] else 'No'}
-        
-        Observaciones de Cierre:
-        {self.data['obs_cierre']}
-        
-        Fecha de Cierre: {self.data['fecha_cierre']}
-        """
-        send_email_notification(subject, body.strip())
+        body_lines = [
+            f"Orden Técnica: {self.data['numero_ot']}",
+            f"Nombre del Equipo: {self.data['nombre_equipo']}",
+            f"PN: {self.data['pn']}",
+            f"SN: {self.data['sn']}",
+            f"Horas de Trabajo: {self.data['horas_trabajo']}",
+            f"Estado de Salida: {self.data['estado_salida']}",
+            f"Observaciones Cierre: {self.data['obs_cierre']}"
+        ]
+
+        if self.data['estado_salida'] == 'Reparable':
+            body_lines.append(f"Destino: {self.data['destino']}")
+
+        body = "\n".join(body_lines)
+
+        send_email_notification(subject, body)
 
     def upload_final_doc(self, doc_type):
         self.load_data()
@@ -679,6 +741,61 @@ class ManageEquipmentWindow(tk.Toplevel):
             if db.execute_query(query, params) is not None:
                 messagebox.showinfo("Éxito", "El equipo ha sido marcado como fuera de inventario.")
                 self.on_close()
+
+class MaterialRequestWindow(tk.Toplevel):
+    """Ventana para solicitar material por correo electrónico."""
+    def __init__(self, parent, equipment_data):
+        super().__init__(parent)
+        self.equipment_data = equipment_data
+        self.title("Solicitud de Material")
+        self.geometry("450x300")
+        self.transient(parent)
+        self.grab_set()
+
+        frame = ttk.Frame(self, padding="10")
+        frame.pack(fill=tk.BOTH, expand=True)
+        frame.columnconfigure(1, weight=1)
+
+        ttk.Label(frame, text=f"Solicitud para equipo SN: {self.equipment_data['sn']}").grid(row=0, column=0, columnspan=2, pady=(0, 10))
+
+        fields = {
+            "Nombre Pieza:": "nombre_pieza", "PN Pieza:": "pn_pieza",
+            "SN Pieza:": "sn_pieza", "Cantidad:": "cantidad"
+        }
+        self.entries = {}
+        row_num = 1
+        for label_text, key in fields.items():
+            ttk.Label(frame, text=label_text).grid(row=row_num, column=0, sticky=tk.W, pady=5)
+            entry = ttk.Entry(frame, width=40)
+            entry.grid(row=row_num, column=1, sticky=tk.EW, pady=5)
+            self.entries[key] = entry
+            row_num += 1
+
+        ttk.Button(frame, text="Enviar Petición por Correo", command=self.send_request).grid(row=row_num, column=0, columnspan=2, pady=20)
+
+    def send_request(self):
+        material_data = {key: entry.get().strip() for key, entry in self.entries.items()}
+
+        if not material_data["nombre_pieza"] or not material_data["cantidad"]:
+            messagebox.showerror("Error de Validación", "Nombre de la pieza y Cantidad son campos obligatorios.")
+            return
+
+        subject = f"Solicitud de Material para OT {self.equipment_data['numero_ot']} (SN: {self.equipment_data['sn']})"
+        body = f"""
+        Se solicita el siguiente material para el equipo con PN/SN: {self.equipment_data['pn']} / {self.equipment_data['sn']}
+
+        Detalles de la Petición:
+        -------------------------
+        - Nombre de la Pieza: {material_data['nombre_pieza']}
+        - PN de la Pieza: {material_data['pn_pieza']}
+        - SN de la Pieza: {material_data['sn_pieza']}
+        - Cantidad: {material_data['cantidad']}
+
+        Esta es una notificación automática generada por el sistema de control de equipos.
+        """
+        send_email_notification(subject, body.strip())
+        self.destroy()
+
 
 # --- PUNTO DE ENTRADA PRINCIPAL ---
 if __name__ == "__main__":
