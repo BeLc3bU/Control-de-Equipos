@@ -171,6 +171,7 @@ class App(tk.Tk):
         ttk.Button(top_panel, text="Registrar Nuevo Equipo", command=self.open_entry_window).pack(side=tk.LEFT, padx=5)
         ttk.Button(top_panel, text="Refrescar Tabla", command=self.refresh_table).pack(side=tk.LEFT, padx=5)
         ttk.Button(top_panel, text="Exportar a Excel", command=self.export_to_excel).pack(side=tk.LEFT, padx=5)
+        ttk.Button(top_panel, text="Generar Informe de Inventario", command=self.generate_inventory_report).pack(side=tk.LEFT, padx=5)
         
         # Filtros
         filter_frame = ttk.Frame(top_panel)
@@ -182,7 +183,7 @@ class App(tk.Tk):
         self.inventory_filter.pack(side=tk.LEFT)
         self.inventory_filter.bind("<<ComboboxSelected>>", self.refresh_table)
 
-        ttk.Label(filter_frame, text="Buscar (PN/SN):").pack(side=tk.LEFT, padx=(10, 2))
+        ttk.Label(filter_frame, text="Buscar (Nombre/PN/SN):").pack(side=tk.LEFT, padx=(10, 2))
         self.search_var = tk.StringVar()
         self.search_var.trace_add("write", lambda *args: self.refresh_table())
         ttk.Entry(filter_frame, textvariable=self.search_var, width=30).pack(side=tk.LEFT)
@@ -232,8 +233,8 @@ class App(tk.Tk):
         params = []
 
         if search_term:
-            conditions.append("(pn LIKE ? OR sn LIKE ?)")
-            params.extend([f"%{search_term}%", f"%{search_term}%"])
+            conditions.append("(nombre_equipo LIKE ? OR pn LIKE ? OR sn LIKE ?)")
+            params.extend([f"%{search_term}%", f"%{search_term}%", f"%{search_term}%"])
         
         if inv_filter == "En Inventario":
             conditions.append("inventario = 1")
@@ -306,6 +307,57 @@ class App(tk.Tk):
 
     def open_entry_window(self):
         EntryWindow(self)
+
+    def generate_inventory_report(self):
+        """Genera un informe en PDF de los equipos en inventario."""
+        try:
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib.units import inch
+            from reportlab.lib.enums import TA_LEFT
+        except ImportError:
+            messagebox.showerror("Librería no encontrada", "Se necesita 'reportlab' para generar informes en PDF.\nInstala con: py -m pip install reportlab")
+            return
+
+        records = db.fetch_query("""
+            SELECT numero_ot, nombre_equipo, pn, sn, estado_salida, log_trabajo 
+            FROM equipos 
+            WHERE inventario = 1 
+            ORDER BY fecha_entrada DESC
+        """)
+
+        if not records:
+            messagebox.showinfo("Sin datos", "No hay equipos en inventario para generar un informe.")
+            return
+
+        filepath = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF Files", "*.pdf")], title="Guardar Informe de Inventario")
+        if not filepath:
+            return
+
+        doc = SimpleDocTemplate(filepath)
+        styles = getSampleStyleSheet()
+        
+        # Estilo para el historial, que respeta los saltos de línea
+        log_style = ParagraphStyle(name='LogStyle', parent=styles['Normal'], alignment=TA_LEFT)
+
+        story = []
+        story.append(Paragraph("Informe de Equipos en Inventario", styles['h1']))
+        story.append(Spacer(1, 0.2 * inch))
+
+        for i, record in enumerate(records):
+            story.append(Paragraph(f"<b>Orden Técnica:</b> {record['numero_ot'] or 'N/A'}", styles['Normal']))
+            story.append(Paragraph(f"<b>Nombre del Equipo:</b> {record['nombre_equipo'] or 'N/A'}", styles['Normal']))
+            story.append(Paragraph(f"<b>PN / SN:</b> {record['pn']} / {record['sn']}", styles['Normal']))
+            story.append(Paragraph(f"<b>Estado de Salida:</b> {record['estado_salida'] or 'Pendiente'}", styles['Normal']))
+            story.append(Spacer(1, 0.1 * inch))
+            story.append(Paragraph("<b>Historial de Intervenciones:</b>", styles['h3']))
+            log_text = (record['log_trabajo'] or "Sin intervenciones.").replace('\n', '<br/>')
+            story.append(Paragraph(log_text, log_style))
+            if i < len(records) - 1:
+                story.append(PageBreak())
+
+        doc.build(story)
+        messagebox.showinfo("Informe Generado", f"El informe ha sido guardado en:\n{os.path.basename(filepath)}")
 
 class EntryWindow(tk.Toplevel):
     """Ventana para el registro de entrada de un nuevo equipo."""
@@ -497,7 +549,7 @@ class ManageEquipmentWindow(tk.Toplevel):
         top_frame.columnconfigure(1, weight=1)
 
         ttk.Label(top_frame, text="Estado de Salida:").grid(row=0, column=0, sticky=tk.W, pady=5, padx=5)
-        self.estado_salida_combo = ttk.Combobox(top_frame, values=["", "Útil", "Reparable"], state="readonly")
+        self.estado_salida_combo = ttk.Combobox(top_frame, values=["", "Útil", "Reparable", "Stamby", "Falto de material", "Baja", "Incompleto"], state="readonly")
         self.estado_salida_combo.set(self.data['estado_salida'] or "")
         self.estado_salida_combo.grid(row=0, column=1, sticky=tk.EW, pady=5, padx=5)
 
@@ -532,7 +584,8 @@ class ManageEquipmentWindow(tk.Toplevel):
         file_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
         
         ttk.Button(file_frame, text="Añadir Tarjeta de Entrada", command=lambda: self.add_files("Seleccionar Tarjeta de Entrada", [("Todos los archivos", "*.*")])).pack(anchor=tk.W, pady=2, fill=tk.X)
-        ttk.Button(file_frame, text="Añadir Documentación Escaneada", command=lambda: self.add_files("Seleccionar Documentación", [("PDF, Imágenes", "*.pdf *.jpg *.png"), ("Todos los archivos", "*.*")])).pack(anchor=tk.W, pady=2, fill=tk.X)
+        ttk.Button(file_frame, text="Añadir Cartilla", command=lambda: self.add_files("Seleccionar Cartilla", [("PDF, Imágenes", "*.pdf *.jpg *.png"), ("Todos los archivos", "*.*")])).pack(anchor=tk.W, pady=2, fill=tk.X)
+        ttk.Button(file_frame, text="Añadir DR de entrada", command=lambda: self.add_files("Seleccionar DR de entrada", [("PDF, Imágenes", "*.pdf *.jpg *.png"), ("Todos los archivos", "*.*")])).pack(anchor=tk.W, pady=2, fill=tk.X)
         ttk.Button(file_frame, text="Añadir Fotos", command=lambda: self.add_files("Seleccionar Fotos", [("Archivos de Imagen", "*.jpg *.jpeg *.png *.gif")])).pack(anchor=tk.W, pady=2, fill=tk.X)
         ttk.Button(file_frame, text="Añadir Tarjeta de Salida", command=lambda: self.add_files("Seleccionar Tarjeta de Salida", [("Todos los archivos", "*.*")])).pack(anchor=tk.W, pady=2, fill=tk.X)
 
@@ -611,7 +664,7 @@ class ManageEquipmentWindow(tk.Toplevel):
             return
 
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-        formatted_entry = f"--- {timestamp} ---\n{new_entry}\n\n"
+        formatted_entry = f"--- Registro del {timestamp} ---\n{new_entry}\n\n"
 
         current_log = self.data['log_trabajo'] or ""
         updated_log = formatted_entry + current_log
