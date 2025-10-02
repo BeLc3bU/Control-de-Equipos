@@ -2,9 +2,6 @@
 
 Una aplicación de escritorio desarrollada en Python para gestionar el flujo de trabajo completo de los equipos que pasan por un banco de pruebas de aviónica, desde la entrada hasta la salida final.
 
- 
-*(Nota: Reemplaza la URL de arriba con una captura de pantalla real de tu aplicación para una mejor presentación)*
-
 ---
 
 ## 📋 Características Principales
