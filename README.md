@@ -1,13 +1,14 @@
 # Control de Equipos de Aviónica (Versión PyQt)
 
-Una aplicación de escritorio moderna desarrollada en Python y PyQt6 para gestionar el flujo de trabajo completo de los equipos que pasan por un banco de pruebas de aviónica, desde la entrada hasta la salida final.
+Una aplicación de escritorio moderna desarrollada en Python y **PyQt6** para gestionar el flujo de trabajo completo de los equipos que pasan por un banco de pruebas de aviónica, desde la entrada hasta la salida final. Esta versión migra la interfaz de Tkinter a PyQt6, ofreciendo una experiencia de usuario más rica y profesional.
 
- 
-*(Nota: Reemplaza la URL de arriba con una captura de pantalla real de tu aplicación para una mejor presentación)*
+
+*(Nota: Reemplaza la URL de arriba con una captura de pantalla real de tu aplicación para una mejor presentación).*
 
 ---
 
 ## 📋 Características Principales
+
 *   **Interfaz Moderna y Fluida:** Desarrollada con PyQt6 para una experiencia de usuario profesional y agradable.
 *   **Flujo de Trabajo Completo:** Gestiona el ciclo de vida de un equipo a través de múltiples etapas: **Entrada**, **Trabajo**, **Cierre** y **Salida**.
 *   **Registro de Entrada Detallado:** Captura `nombre`, `PN`, `SN`, `estado`, `Nº OT`, `Nº DR`, `observaciones` y documentos adjuntos.
@@ -15,10 +16,10 @@ Una aplicación de escritorio moderna desarrollada en Python y PyQt6 para gestio
     *   **Pestaña de Trabajo:** Permite actualizar el estado de salida (`Útil`, `Reparable`, `Stamby`, etc.), añadir observaciones, subir múltiples tipos de archivos (`tarjetas`, `cartillas`, `DRs`, `fotos`), registrar un **historial cronológico de intervenciones** y abrir un formulario para **solicitar material** por correo.
     *   **Pestaña de Cierre:** Rellenar un formulario de cierre con `destino`, `horas de trabajo`, etc., y marcar el equipo como "cerrado".
     *   **Notificación por Correo Simplificada:** Abre la aplicación web de Gmail con un borrador de correo listo para enviar, sin necesidad de configurar SMTP.
-    *   **Documentación Final:** Adjuntar el `Certificado CAT` (para equipos 'Útiles') o el `DR Final` (para equipos 'Reparables').
+    *   **Documentación Final:** Subir el `Certificado CAT` (para equipos 'Útiles') o el `DR Final` (para equipos 'Reparables') desde la pestaña de cierre.
     *   **Salida de Inventario:** Marcar el equipo como fuera de inventario, registrando la fecha de salida.
-*   **Base de Datos Robusta:** Utiliza **SQLite** con un esquema que permite registrar múltiples ciclos de mantenimiento para un mismo equipo, usando la Orden Técnica (OT) como identificador único.
-*   **Gestión de Archivos Organizada:** Guarda todos los documentos en una estructura de carpetas jerárquica y versionada: `docs/NombreEquipo/SN/ArisingXX/`.
+*   **Base de Datos Robusta:** Utiliza **SQLite** con un esquema que permite registrar múltiples ciclos de mantenimiento para un mismo equipo, usando la **Orden Técnica (OT)** como identificador único por ciclo.
+*   **Gestión de Archivos Organizada:** Guarda todos los documentos en una estructura de carpetas jerárquica y versionada: `docs/NombreDelEquipo/SN/ArisingXX/`, evitando colisiones de nombres.
 *   **Consultas y Reportes Avanzados:**
     *   Filtra la vista principal por estado de inventario (`En Inventario`, `Fuera de Inventario`, `Todos`).
     *   Búsqueda en tiempo real por `OT`, `Nombre`, `PN` o `SN`.
@@ -26,11 +27,12 @@ Una aplicación de escritorio moderna desarrollada en Python y PyQt6 para gestio
     *   Exporta la vista actual de la tabla a un archivo **Excel** (`.xlsx`).
     *   Genera un **informe detallado en PDF** de todos los equipos en inventario, incluyendo su historial de intervenciones.
 *   **Validaciones y Alertas:** El sistema avisa al usuario si intenta realizar acciones fuera de orden (ej. dar salida sin la documentación final requerida).
+*   **Logging Centralizado:** Registra eventos importantes y errores en un archivo `app.log` para facilitar la depuración.
 *   **Mejoras de Calidad de Vida (QoL):**
     *   La aplicación recuerda el tamaño y la posición de la ventana, así como el ancho de las columnas.
     *   Avisa al usuario si intenta cerrar una ventana con cambios sin guardar.
     *   El cursor se posiciona automáticamente en los campos de entrada para un flujo de trabajo más rápido.
-
+    *   Ordenamiento natural en las columnas de la tabla (entiende los números dentro del texto).
 ---
 
 ## 🛠️ Tecnologías Utilizadas
@@ -40,7 +42,6 @@ Una aplicación de escritorio moderna desarrollada en Python y PyQt6 para gestio
 *   **Base de Datos:** SQLite3
 *   **Exportación a Excel:** Pandas & Openpyxl
 *   **Generación de PDF:** ReportLab
-*   **Gestión de Configuración:** python-dotenv
 
 ---
 
@@ -54,13 +55,13 @@ Asegúrate de tener **Python 3** instalado en tu sistema. Si no lo tienes, puede
 
 > **Importante:** Durante la instalación en Windows, asegúrate de marcar la casilla que dice **"Add Python to PATH"**.
 
-### 2. Clonar o Descargar el Proyecto
+### 2. Clonar el Repositorio
 
 Abre una terminal y clona este repositorio en tu máquina:
 
 ```bash
-git clone https://github.com/tu-usuario/tu-repositorio.git
-cd tu-repositorio
+git clone https://github.com/tu-usuario/control-equipos-pyqt.git
+cd control-equipos-pyqt
 ```
 *(Reemplaza `tu-usuario/tu-repositorio` con tu URL real de GitHub)*
 
