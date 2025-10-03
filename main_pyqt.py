@@ -1,14 +1,16 @@
 # main_pyqt.py
 import sys
+import traceback
 import re
 import os
+import json
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
     QPushButton, QTableView, QAbstractItemView, QHeaderView, QComboBox, 
     QLineEdit, QLabel, QStatusBar, QMessageBox, QFileDialog
 )
 from PyQt6.QtGui import QAction, QStandardItemModel, QStandardItem, QColor, QIcon
-from PyQt6.QtCore import Qt, QSettings
+from PyQt6.QtCore import Qt, QSettings, QRunnable, QThreadPool, QObject, pyqtSignal
 
 # --- IMPORTACIONES DE TU LÓGICA EXISTENTE ---
 # ¡La gran ventaja es que podemos reutilizar todo esto!
@@ -17,7 +19,7 @@ from logger import logger
 from validators import Validator
 from database_improved import Database
 from file_utils import open_file
-from pyqt_windows import EntryDialog, ManageEquipmentDialog
+from pyqt_windows import EntryDialog, ManageEquipmentDialog, ProductivityChartDialog
 
 # --- INICIALIZACIÓN DEL ENTORNO (igual que antes) ---
 db = None
@@ -29,15 +31,66 @@ def setup_environment():
     db.setup()
     logger.info("Entorno configurado correctamente para PyQt.")
 
+# =================================================================================
+# Worker para Tareas en Segundo Plano (Rendimiento)
+# =================================================================================
+
+class WorkerSignals(QObject):
+    """Define las señales disponibles para un hilo de trabajo."""
+    finished = pyqtSignal()
+    error = pyqtSignal(tuple)
+    result = pyqtSignal(object)
+
+class Worker(QRunnable):
+    """
+    Worker thread
+    Hereda de QRunnable para poder ser ejecutado en un QThreadPool.
+    """
+    def __init__(self, fn, *args, **kwargs):
+        super(Worker, self).__init__()
+        self.fn = fn
+        self.args = args
+        self.kwargs = kwargs
+        self.signals = WorkerSignals()
+
+    def run(self):
+        """Ejecuta la tarea en segundo plano."""
+        try:
+            result = self.fn(*self.args, **self.kwargs)
+        except Exception:
+            traceback.print_exc()
+            exctype, value = sys.exc_info()[:2]
+            self.signals.error.emit((exctype, value, traceback.format_exc()))
+        else:
+            self.signals.result.emit(result)
+        finally:
+            self.signals.finished.emit()
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Control de Equipos - Banco de Pruebas (PyQt)")
+        self.setWindowTitle("Control de Equipos - Banco de Pruebas")
         self.setGeometry(100, 100, 1400, 750)
 
-        # Cargar la configuración de la ventana
-        self.load_settings()
+        # Pool de hilos para tareas en segundo plano
+        self.threadpool = QThreadPool()
+        logger.info(f"Multithreading con un máximo de {self.threadpool.maxThreadCount()} hilos.")
+
+        # Constantes de la clase
+        self.STATUS_COLORS = {
+            "Útil": (QColor("#fff3cd"), QColor("black")),
+            "Reparable": (QColor("#d4edda"), QColor("black")),
+            "Baja": (QColor("#f8d7da"), QColor("black")),
+            "Stamby": (QColor("#343a40"), QColor("white")),
+            "Litigio": (QColor("white"), QColor("black")),
+            "Falto de material": (QColor("#cce5ff"), QColor("black")),
+            "Incompleto": (QColor("#fdebd0"), QColor("black"))
+        }
+        
+        # Definir las cabeceras como una constante de la clase para fácil acceso
+        self.HEADERS = ["OT", "Nombre", "PN", "SN", "Estado Entrada", "Obs. Entrada", "Fecha Entrada",
+                        "Estado Salida", "Obs. Salida", "Fecha Cierre", "Inventario", "ID"]
+
 
         # --- Icono de la Aplicación ---
         app_icon_path = os.path.join('icons', 'app_icon.png')
@@ -49,16 +102,28 @@ class MainWindow(QMainWindow):
         
         # Acciones para la barra de herramientas
         action_new = QAction(QIcon(os.path.join('icons', 'new.png')), "Registrar Nuevo Equipo", self)
+        action_new.setShortcut("Ctrl+N")
+        action_new.setToolTip("Registrar un nuevo equipo en el sistema (Ctrl+N)")
         action_new.triggered.connect(self.open_entry_window)
         toolbar.addAction(action_new)
 
         action_export = QAction(QIcon(os.path.join('icons', 'excel.png')), "Exportar a Excel", self)
+        action_export.setShortcut("Ctrl+E")
+        action_export.setToolTip("Exportar la vista actual a un archivo Excel (Ctrl+E)")
         action_export.triggered.connect(self.export_to_excel)
         toolbar.addAction(action_export)
 
         action_report = QAction(QIcon(os.path.join('icons', 'pdf.png')), "Generar Informe", self)
+        action_report.setShortcut("Ctrl+P") # P de "Print" o "PDF"
+        action_report.setToolTip("Generar un informe PDF del inventario (Ctrl+P)")
         action_report.triggered.connect(self.generate_inventory_report)
         toolbar.addAction(action_report)
+
+        action_charts = QAction(QIcon(os.path.join('icons', 'graficos.png')), "Generar Gráficos de Productividad", self)
+        action_charts.setShortcut("Ctrl+G")
+        action_charts.setToolTip("Generar gráficos de productividad (Ctrl+G)")
+        action_charts.triggered.connect(self.generate_productivity_charts)
+        toolbar.addAction(action_charts)
 
         # --- Widget Central y Layouts ---
         central_widget = QWidget()
@@ -80,6 +145,7 @@ class MainWindow(QMainWindow):
         filter_layout.addWidget(QLabel("Buscar (OT/Nombre/PN/SN):"))
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Escribe para buscar...")
+        self.search_input.setAccessibleName("Campo de búsqueda") # Para lectores de pantalla
         self.search_input.textChanged.connect(self.refresh_table)
         filter_layout.addWidget(self.search_input)
 
@@ -87,6 +153,7 @@ class MainWindow(QMainWindow):
 
         # --- Tabla de Equipos ---
         self.table_model = QStandardItemModel()
+        self.table_model.setHorizontalHeaderLabels(self.HEADERS)
         self.table_view = QTableView()
         self.table_view.setModel(self.table_model)
         
@@ -94,7 +161,14 @@ class MainWindow(QMainWindow):
         self.table_view.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers) # No editable
         self.table_view.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows) # Seleccionar filas completas
         self.table_view.setAlternatingRowColors(True)
-        self.table_view.horizontalHeader().setStretchLastSection(True)
+        
+        # --- Política de Redimensionamiento de Columnas ---
+        header = self.table_view.horizontalHeader()
+        
+        # Permitir que el usuario ajuste todas las columnas manualmente.
+        for i in range(len(self.HEADERS)):
+            header.setSectionResizeMode(i, QHeaderView.ResizeMode.Interactive)
+
         self.table_view.setSortingEnabled(True)
         
         # Permitir que el modelo maneje el ordenamiento para un control más fino
@@ -109,7 +183,10 @@ class MainWindow(QMainWindow):
         # --- Barra de Estado ---
         self.setStatusBar(QStatusBar(self))
 
+        # Cargar la configuración de la ventana (geometría y estado de la tabla)
+        # Se llama aquí, después de que todos los widgets han sido creados.
         self.refresh_table()
+        self.load_settings()
 
     def load_settings(self):
         """Carga la geometría de la ventana y el estado de la tabla."""
@@ -121,6 +198,8 @@ class MainWindow(QMainWindow):
         table_state = settings.value("main_table_state")
         if table_state:
             self.table_view.horizontalHeader().restoreState(table_state)
+        else:
+            pass # No hacemos nada, el usuario ajustará y se guardará al cerrar.
 
     def closeEvent(self, event):
         """Guarda la configuración al cerrar la aplicación."""
@@ -131,19 +210,15 @@ class MainWindow(QMainWindow):
 
     def refresh_table(self):
         """Limpia y recarga la tabla con datos de la BD, aplicando filtros."""
-        self.table_model.clear()
-        
-        # Definir las cabeceras
-        headers = ["OT", "Nombre", "PN", "SN", "Estado Entrada", "Fecha Entrada", "Estado Salida", "Fecha Cierre", "Inventario", "ID"]
-        self.table_model.setHorizontalHeaderLabels(headers)
+        self.table_model.removeRows(0, self.table_model.rowCount())
         
         search_term = self.search_input.text().strip()
         inv_filter = self.inventory_filter.currentText()
 
         # La misma consulta que ya tenías, ¡perfecto!
         query = """SELECT id, numero_ot, nombre_equipo, pn, sn, estado_entrada, 
-                   fecha_entrada, estado_salida, fecha_cierre, inventario 
-                   FROM equipos"""
+                   fecha_entrada, estado_salida, fecha_cierre, inventario, obs_entrada, 
+                   obs_salida FROM equipos"""
         conditions = []
         params = []
 
@@ -173,8 +248,10 @@ class MainWindow(QMainWindow):
                 QStandardItem(str(row_data['pn'] or "")),
                 QStandardItem(str(row_data['sn'] or "")),
                 QStandardItem(str(row_data['estado_entrada'] or "")),
+                QStandardItem(str(row_data['obs_entrada'] or "")),
                 QStandardItem(str(row_data['fecha_entrada'] or "")),
                 QStandardItem(str(row_data['estado_salida'] or "")),
+                QStandardItem(str(row_data['obs_salida'] or "")),
                 QStandardItem(str(row_data['fecha_cierre'] or "")),
                 QStandardItem("Dentro" if row_data['inventario'] else "Fuera"),
                 QStandardItem(str(row_data['id'])) # Guardamos el ID en una columna oculta
@@ -198,33 +275,20 @@ class MainWindow(QMainWindow):
             self.table_model.appendRow(row_items)
 
         # Ocultar la columna de ID
-        self.table_view.setColumnHidden(headers.index("ID"), True)
-        
-        # Ajustar el tamaño de las columnas al contenido antes de estirar la última
-        self.table_view.resizeColumnsToContents()
+        self.table_view.setColumnHidden(self.HEADERS.index("ID"), True)
         
         self.update_stats(len(records))
 
     def get_color_for_status(self, row_data):
         """Determina el color de la fila según el estado del equipo."""
-        # Mapa de colores por estado: (background, foreground). Foreground es None para usar el color por defecto.
-        STATUS_COLORS = {
-            "Útil": (QColor("#fff3cd"), None),      # Amarillo claro
-            "Reparable": (QColor("#d4edda"), None), # Verde claro
-            "Baja": (QColor("#f8d7da"), None),      # Rojo claro
-            "Stamby": (QColor("black"), QColor("white")), # Fondo negro, texto blanco
-            "Litigio": (QColor("white"), None),     # Fondo blanco
-            "Falto de material": (QColor("#cce5ff"), None), # Azul claro (mantenido)
-            "Incompleto": (QColor("#fdebd0"), None) # Naranja claro (mantenido)
-        }
-        
         if not row_data['inventario']:
-            return QColor("#f0f0f0"), None # Gris muy claro para fuera de inventario
+            # Para filas fuera de inventario, un fondo gris claro con texto negro es seguro.
+            return QColor("#f0f0f0"), QColor("black")
 
         status = row_data['estado_salida'] or row_data['estado_entrada']
         
-        # .get(status, (None, None)) para devolver colores nulos si el estado no está en el mapa
-        bg_color, fg_color = STATUS_COLORS.get(status, (None, None))
+        # Usamos la constante de la clase
+        bg_color, fg_color = self.STATUS_COLORS.get(status, (None, None))
         
         return bg_color, fg_color
 
@@ -247,7 +311,7 @@ class MainWindow(QMainWindow):
     # --- FUNCIONES A IMPLEMENTAR ---
     def on_double_click(self, index):
         # La columna 9 es donde guardamos el ID
-        id_item = self.table_model.item(index.row(), 9)
+        id_item = self.table_model.item(index.row(), self.HEADERS.index("ID"))
         record_id = int(id_item.text())
         dialog = ManageEquipmentDialog(db, record_id, self)
         dialog.data_changed.connect(self.refresh_table) # Si algo cambia, refresca la tabla
@@ -258,6 +322,22 @@ class MainWindow(QMainWindow):
         dialog = EntryDialog(db, self) # Pasamos la sesión de BD y el parent
         if dialog.exec(): # .exec() retorna True si se llamó a .accept()
             self.refresh_table()
+
+    def start_long_running_task(self, task_function, on_finish, on_error, *args):
+        """Inicia una tarea en un hilo separado."""
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        self.statusBar().showMessage(f"Procesando: {task_function.__name__}...")
+
+        worker = Worker(task_function, *args)
+        worker.signals.finished.connect(lambda: self.on_task_finished(on_finish))
+        worker.signals.error.connect(on_error)
+        self.threadpool.start(worker)
+
+    def on_task_finished(self, callback):
+        """Se ejecuta cuando una tarea en segundo plano finaliza."""
+        QApplication.restoreOverrideCursor()
+        self.statusBar().showMessage("Listo.", 3000)
+        callback()
 
     def export_to_excel(self):
         """Exporta los datos actualmente visibles en la tabla a un archivo Excel."""
@@ -275,8 +355,7 @@ class MainWindow(QMainWindow):
         if not filepath:
             return
 
-        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
-
+        # Extraer datos en el hilo principal (es rápido)
         # Extraer datos del modelo de la tabla
         headers = [self.table_model.horizontalHeaderItem(i).text() for i in range(self.table_model.columnCount()) if not self.table_view.isColumnHidden(i)]
         data = []
@@ -284,73 +363,83 @@ class MainWindow(QMainWindow):
             row_data = [self.table_model.item(row, col).text() for col in range(self.table_model.columnCount()) if not self.table_view.isColumnHidden(col)]
             data.append(row_data)
 
-        df = pd.DataFrame(data, columns=headers)
-
-        try:
+        # La escritura a disco se hace en un hilo secundario
+        def do_export(data, headers, filepath):
+            df = pd.DataFrame(data, columns=headers)
             df.to_excel(filepath, index=False)
+
+        def on_export_complete():
             QMessageBox.information(self, "Exportación Exitosa", f"Datos exportados a {os.path.basename(filepath)}")
-        except PermissionError:
-            QMessageBox.critical(self, "Error de Permisos", f"No se pudo guardar el archivo. Asegúrate de que no esté abierto en otro programa.")
-        except Exception as e:
-            QMessageBox.critical(self, "Error de Exportación", f"No se pudo guardar el archivo Excel: {e}")
-        finally:
-            QApplication.restoreOverrideCursor()
+
+        def on_export_error(err):
+            exctype, value, _ = err
+            if isinstance(value, PermissionError):
+                QMessageBox.critical(self, "Error de Permisos", "No se pudo guardar el archivo. Asegúrate de que no esté abierto en otro programa.")
+            else:
+                QMessageBox.critical(self, "Error de Exportación", f"No se pudo guardar el archivo Excel: {value}")
+
+        self.start_long_running_task(do_export, on_export_complete, on_export_error, data, headers, filepath)
 
     def generate_inventory_report(self):
-        """Genera un informe en PDF de los equipos en inventario."""
+        """Inicia la generación de un informe en PDF en un hilo secundario."""
         try:
             from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
             from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
             from reportlab.lib.units import inch
             from reportlab.lib.enums import TA_LEFT
-            import json
         except ImportError:
             QMessageBox.critical(self, "Librería no encontrada", "Se necesita 'reportlab' para generar informes.\nInstala con: py -m pip install reportlab")
-            return
-
-        records = db.fetch_query("""
-            SELECT numero_ot, nombre_equipo, pn, sn, estado_salida, log_trabajo 
-            FROM equipos WHERE inventario = 1 ORDER BY fecha_entrada DESC
-        """)
-
-        if not records:
-            QMessageBox.information(self, "Sin datos", "No hay equipos en inventario para generar un informe.")
             return
 
         filepath, _ = QFileDialog.getSaveFileName(self, "Guardar Informe PDF", "", "Archivos PDF (*.pdf)")
         if not filepath:
             return
 
-        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        # La generación del PDF se hace en un hilo secundario
+        def do_report_generation(filepath):
+            records = db.fetch_query("""
+                SELECT numero_ot, nombre_equipo, pn, sn, estado_salida, log_trabajo 
+                FROM equipos WHERE inventario = 1 ORDER BY fecha_entrada DESC
+            """)
+            if not records:
+                return "No hay equipos en inventario para generar un informe."
 
-        doc = SimpleDocTemplate(filepath)
-        styles = getSampleStyleSheet()
-        log_style = ParagraphStyle(name='LogStyle', parent=styles['Normal'], alignment=TA_LEFT, leftIndent=15)
+            doc = SimpleDocTemplate(filepath)
+            styles = getSampleStyleSheet()
+            log_style = ParagraphStyle(name='LogStyle', parent=styles['Normal'], alignment=TA_LEFT, leftIndent=15)
+            story = [Paragraph("Informe de Equipos en Inventario", styles['h1']), Spacer(1, 0.2 * inch)]
 
-        story = [Paragraph("Informe de Equipos en Inventario", styles['h1']), Spacer(1, 0.2 * inch)]
+            for i, record in enumerate(records):
+                story.append(Paragraph(f"<b>Orden Técnica:</b> {record['numero_ot'] or 'N/A'}", styles['Normal']))
+                story.append(Paragraph(f"<b>Nombre del Equipo:</b> {record['nombre_equipo'] or 'N/A'}", styles['Normal']))
+                story.append(Paragraph(f"<b>PN / SN:</b> {record['pn']} / {record['sn']}", styles['Normal']))
+                story.append(Paragraph(f"<b>Estado Actual:</b> {record['estado_salida'] or 'Pendiente'}", styles['Normal']))
+                story.append(Spacer(1, 0.1 * inch))
+                story.append(Paragraph("<b>Historial de Intervenciones:</b>", styles['h3']))
+                try:
+                    log_entries = json.loads(record['log_trabajo'] or '[]')
+                    for entry in log_entries:
+                        story.append(Paragraph(f"- ({entry.get('timestamp', '')}) {entry.get('entry', '')}", log_style))
+                except (json.JSONDecodeError, TypeError):
+                    story.append(Paragraph(f"- {record['log_trabajo'] or 'Sin intervenciones.'}", log_style))
+                if i < len(records) - 1: story.append(PageBreak())
 
-        for i, record in enumerate(records):
-            story.append(Paragraph(f"<b>Orden Técnica:</b> {record['numero_ot'] or 'N/A'}", styles['Normal']))
-            story.append(Paragraph(f"<b>Nombre del Equipo:</b> {record['nombre_equipo'] or 'N/A'}", styles['Normal']))
-            story.append(Paragraph(f"<b>PN / SN:</b> {record['pn']} / {record['sn']}", styles['Normal']))
-            story.append(Paragraph(f"<b>Estado Actual:</b> {record['estado_salida'] or 'Pendiente'}", styles['Normal']))
-            story.append(Spacer(1, 0.1 * inch))
-            story.append(Paragraph("<b>Historial de Intervenciones:</b>", styles['h3']))
-            
-            try:
-                log_entries = json.loads(record['log_trabajo'] or '[]')
-                for entry in log_entries:
-                    story.append(Paragraph(f"- ({entry.get('timestamp', '')}) {entry.get('entry', '')}", log_style))
-            except (json.JSONDecodeError, TypeError):
-                story.append(Paragraph(f"- {record['log_trabajo'] or 'Sin intervenciones.'}", log_style))
-            
-            if i < len(records) - 1: story.append(PageBreak())
-
-        try:
             doc.build(story)
+            return None # Éxito
+
+        def on_report_complete():
             QMessageBox.information(self, "Informe Generado", f"El informe ha sido guardado en:\n{os.path.basename(filepath)}")
-        finally:
-            QApplication.restoreOverrideCursor()
+
+        def on_report_error(err):
+            _, value, _ = err
+            QMessageBox.critical(self, "Error de Generación", f"No se pudo generar el informe PDF: {value}")
+
+        self.start_long_running_task(do_report_generation, on_report_complete, on_report_error, filepath)
+
+    def generate_productivity_charts(self):
+        """Muestra un diálogo para los futuros gráficos de productividad."""
+        dialog = ProductivityChartDialog(db, self)
+        dialog.exec()
 
 
 if __name__ == "__main__":

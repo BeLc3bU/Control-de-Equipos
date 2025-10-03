@@ -1,9 +1,15 @@
-# Control de Equipos de Aviónica (Versión PyQt)
+# Control de Equipos de Aviónica (Versión PyQt6)
 
 Una aplicación de escritorio moderna desarrollada en Python y **PyQt6** para gestionar el flujo de trabajo completo de los equipos que pasan por un banco de pruebas de aviónica, desde la entrada hasta la salida final. Esta versión migra la interfaz de Tkinter a PyQt6, ofreciendo una experiencia de usuario más rica y profesional.
 
 
 *(Nota: Reemplaza la URL de arriba con una captura de pantalla real de tu aplicación para una mejor presentación).*
+
+---
+
+## 🎥 Demo en Video
+
+[![Ver en YouTube](https://img.youtube.com/vi/Ij5PyH-BzMI/0.jpg)](https://youtu.be/Ij5PyH-BzMI)
 
 ---
 
@@ -13,25 +19,31 @@ Una aplicación de escritorio moderna desarrollada en Python y **PyQt6** para ge
 *   **Flujo de Trabajo Completo:** Gestiona el ciclo de vida de un equipo a través de múltiples etapas: **Entrada**, **Trabajo**, **Cierre** y **Salida**.
 *   **Registro de Entrada Detallado:** Captura `nombre`, `PN`, `SN`, `estado`, `Nº OT`, `Nº DR`, `observaciones` y documentos adjuntos.
 *   **Panel de Gestión Centralizado:** Al hacer doble clic en un equipo, se abre una ventana con pestañas para:
-    *   **Pestaña de Trabajo:** Permite actualizar el estado de salida (`Útil`, `Reparable`, `Stamby`, etc.), añadir observaciones, subir múltiples tipos de archivos (`tarjetas`, `cartillas`, `DRs`, `fotos`), registrar un **historial cronológico de intervenciones** y abrir un formulario para **solicitar material** por correo.
+    *   **Pestaña de Trabajo:** Permite actualizar el estado de salida, añadir observaciones, subir múltiples tipos de archivos, registrar un **historial cronológico de intervenciones** y abrir un formulario para **solicitar material**.
     *   **Pestaña de Cierre:** Rellenar un formulario de cierre con `destino`, `horas de trabajo`, etc., y marcar el equipo como "cerrado".
     *   **Notificación por Correo Simplificada:** Abre la aplicación web de Gmail con un borrador de correo listo para enviar, sin necesidad de configurar SMTP.
     *   **Documentación Final:** Subir el `Certificado CAT` (para equipos 'Útiles') o el `DR Final` (para equipos 'Reparables') desde la pestaña de cierre.
     *   **Salida de Inventario:** Marcar el equipo como fuera de inventario, registrando la fecha de salida.
 *   **Base de Datos Robusta:** Utiliza **SQLite** con un esquema que permite registrar múltiples ciclos de mantenimiento para un mismo equipo, usando la **Orden Técnica (OT)** como identificador único por ciclo.
 *   **Gestión de Archivos Organizada:** Guarda todos los documentos en una estructura de carpetas jerárquica y versionada: `docs/NombreDelEquipo/SN/ArisingXX/`, evitando colisiones de nombres.
-*   **Consultas y Reportes Avanzados:**
+*   **Análisis y Reportes Avanzados:**
     *   Filtra la vista principal por estado de inventario (`En Inventario`, `Fuera de Inventario`, `Todos`).
     *   Búsqueda en tiempo real por `OT`, `Nombre`, `PN` o `SN`.
     *   **Coloreado de Filas:** La tabla principal resalta las filas con colores según el estado del equipo para una identificación visual rápida.
     *   Exporta la vista actual de la tabla a un archivo **Excel** (`.xlsx`).
     *   Genera un **informe detallado en PDF** de todos los equipos en inventario, incluyendo su historial de intervenciones.
+    *   **Gráficos de Productividad:** Genera visualizaciones dinámicas con filtro por fecha para analizar:
+        *   **Rendimiento del Taller:** Equipos cerrados por mes.
+        *   **Distribución de Resultados:** Gráfico circular de estados de salida.
+        *   **Tiempo de Ciclo (Turnaround):** Días promedio desde la entrada hasta el cierre.
+        *   **Complejidad de Reparaciones:** Histograma de horas de trabajo.
+*   **Rendimiento Optimizado:** Las operaciones lentas como la exportación a Excel y la generación de PDF se ejecutan en **hilos de trabajo separados** para no congelar la interfaz.
 *   **Validaciones y Alertas:** El sistema avisa al usuario si intenta realizar acciones fuera de orden (ej. dar salida sin la documentación final requerida).
-*   **Logging Centralizado:** Registra eventos importantes y errores en un archivo `app.log` para facilitar la depuración.
-*   **Mejoras de Calidad de Vida (QoL):**
+*   **Logging Centralizado:** Registra eventos importantes y errores en un archivo `control_equipos.log` para facilitar la depuración.
+*   **Mejoras de Accesibilidad y QoL:**
     *   La aplicación recuerda el tamaño y la posición de la ventana, así como el ancho de las columnas.
-    *   Avisa al usuario si intenta cerrar una ventana con cambios sin guardar.
-    *   El cursor se posiciona automáticamente en los campos de entrada para un flujo de trabajo más rápido.
+    *   Atajos de teclado (`Ctrl+N`, `Ctrl+E`, etc.) para acciones comunes.
+    *   Descripciones emergentes (Tooltips) en los botones.
     *   Ordenamiento natural en las columnas de la tabla (entiende los números dentro del texto).
 ---
 
@@ -40,7 +52,8 @@ Una aplicación de escritorio moderna desarrollada en Python y **PyQt6** para ge
 *   **Lenguaje:** Python 3
 *   **Interfaz Gráfica (GUI):** PyQt6
 *   **Base de Datos:** SQLite3
-*   **Exportación a Excel:** Pandas & Openpyxl
+*   **Gráficos y Datos:** Pandas & Matplotlib
+*   **Exportación a Excel:** Openpyxl
 *   **Generación de PDF:** ReportLab
 
 ---
@@ -57,11 +70,11 @@ Asegúrate de tener **Python 3** instalado en tu sistema. Si no lo tienes, puede
 
 ### 2. Clonar el Repositorio
 
-Abre una terminal y clona este repositorio en tu máquina:
+Abre una terminal o `Git Bash` y clona este repositorio en tu máquina:
 
 ```bash
-git clone https://github.com/tu-usuario/control-equipos-pyqt.git
-cd control-equipos-pyqt
+git clone https://github.com/pablo-ma/Control-de-Equipos.git
+cd Control-de-Equipos
 ```
 *(Reemplaza `tu-usuario/tu-repositorio` con tu URL real de GitHub)*
 
@@ -83,10 +96,10 @@ Una vez instaladas las dependencias, puedes iniciar el programa con el siguiente
 
 ```bash
 # En Windows
-py control_equipos.py
+py main_pyqt.py
 
 # En macOS / Linux
-python3 control_equipos.py
+python3 main_pyqt.py
 ```
 
 Al ejecutarse por primera vez, la aplicación creará automáticamente el archivo de base de datos `control_equipos.db` y la carpeta `docs/` para los documentos.
