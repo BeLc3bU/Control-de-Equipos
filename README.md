@@ -1,39 +1,46 @@
-# Control de Equipos de Aviónica
+# Control de Equipos de Aviónica (Versión PyQt)
 
-Una aplicación de escritorio desarrollada en Python para gestionar el flujo de trabajo completo de los equipos que pasan por un banco de pruebas de aviónica, desde la entrada hasta la salida final.
+Una aplicación de escritorio moderna desarrollada en Python y PyQt6 para gestionar el flujo de trabajo completo de los equipos que pasan por un banco de pruebas de aviónica, desde la entrada hasta la salida final.
+
+ 
+*(Nota: Reemplaza la URL de arriba con una captura de pantalla real de tu aplicación para una mejor presentación)*
 
 ---
 
 ## 📋 Características Principales
-*   **Flujo de Trabajo Completo:** Gestiona el ciclo de vida de un equipo a través de 4 etapas: **Entrada**, **Trabajo**, **Cierre** y **Salida**.
-*   **Registro de Entrada Detallado:** Captura `nombre`, `PN`, `SN`, `estado`, `Nº OT`, `Nº DR`, `observaciones` y el documento `SL2000`.
+*   **Interfaz Moderna y Fluida:** Desarrollada con PyQt6 para una experiencia de usuario profesional y agradable.
+*   **Flujo de Trabajo Completo:** Gestiona el ciclo de vida de un equipo a través de múltiples etapas: **Entrada**, **Trabajo**, **Cierre** y **Salida**.
+*   **Registro de Entrada Detallado:** Captura `nombre`, `PN`, `SN`, `estado`, `Nº OT`, `Nº DR`, `observaciones` y documentos adjuntos.
 *   **Panel de Gestión Centralizado:** Al hacer doble clic en un equipo, se abre una ventana con pestañas para:
     *   **Pestaña de Trabajo:** Permite actualizar el estado de salida (`Útil`, `Reparable`, `Stamby`, etc.), añadir observaciones, subir múltiples tipos de archivos (`tarjetas`, `cartillas`, `DRs`, `fotos`), registrar un **historial cronológico de intervenciones** y abrir un formulario para **solicitar material** por correo.
     *   **Pestaña de Cierre:** Rellenar un formulario de cierre con `destino`, `horas de trabajo`, etc., y marcar el equipo como "cerrado".
-    *   **Notificación por Correo:** Enviar automáticamente un resumen del formulario de cierre por email (configurable vía SMTP).
+    *   **Notificación por Correo Simplificada:** Abre la aplicación web de Gmail con un borrador de correo listo para enviar, sin necesidad de configurar SMTP.
     *   **Documentación Final:** Adjuntar el `Certificado CAT` (para equipos 'Útiles') o el `DR Final` (para equipos 'Reparables').
     *   **Salida de Inventario:** Marcar el equipo como fuera de inventario, registrando la fecha de salida.
-*   **Base de Datos Robusta:** Utiliza **SQLite** con un esquema ampliado para almacenar todos los detalles del proceso. El SN es único para evitar duplicados.
-*   **Gestión de Archivos Organizada:** Guarda todos los documentos (SL2000, fotos, CAT, DR) en una estructura de carpetas dedicada: `docs/PN_SN/[entrada|trabajo|cierre]/`.
+*   **Base de Datos Robusta:** Utiliza **SQLite** con un esquema que permite registrar múltiples ciclos de mantenimiento para un mismo equipo, usando la Orden Técnica (OT) como identificador único.
+*   **Gestión de Archivos Organizada:** Guarda todos los documentos en una estructura de carpetas jerárquica y versionada: `docs/NombreEquipo/SN/ArisingXX/`.
 *   **Consultas y Reportes Avanzados:**
     *   Filtra la vista principal por estado de inventario (`En Inventario`, `Fuera de Inventario`, `Todos`).
-    *   Búsqueda en tiempo real por `Nombre`, `PN` o `SN`.
+    *   Búsqueda en tiempo real por `OT`, `Nombre`, `PN` o `SN`.
+    *   **Coloreado de Filas:** La tabla principal resalta las filas con colores según el estado del equipo para una identificación visual rápida.
     *   Exporta la vista actual de la tabla a un archivo **Excel** (`.xlsx`).
     *   Genera un **informe detallado en PDF** de todos los equipos en inventario, incluyendo su historial de intervenciones.
 *   **Validaciones y Alertas:** El sistema avisa al usuario si intenta realizar acciones fuera de orden (ej. dar salida sin la documentación final requerida).
-*   **Estadísticas Rápidas:** Muestra un conteo de equipos totales y en inventario.
+*   **Mejoras de Calidad de Vida (QoL):**
+    *   La aplicación recuerda el tamaño y la posición de la ventana, así como el ancho de las columnas.
+    *   Avisa al usuario si intenta cerrar una ventana con cambios sin guardar.
+    *   El cursor se posiciona automáticamente en los campos de entrada para un flujo de trabajo más rápido.
 
 ---
 
 ## 🛠️ Tecnologías Utilizadas
 
 *   **Lenguaje:** Python 3
-*   **Interfaz Gráfica (GUI):** Tkinter (la librería estándar de Python para GUI).
+*   **Interfaz Gráfica (GUI):** PyQt6
 *   **Base de Datos:** SQLite3
 *   **Exportación a Excel:** Pandas & Openpyxl
 *   **Generación de PDF:** ReportLab
-*   **Envío de Correo:** smtplib
-*   **Gestión de Datos:** json
+*   **Gestión de Configuración:** python-dotenv
 
 ---
 
@@ -41,13 +48,13 @@ Una aplicación de escritorio desarrollada en Python para gestionar el flujo de 
 
 Sigue estos pasos para poner en marcha la aplicación en tu máquina local.
 
-### 1. Prerrequisitos
+### 1. Prerrequisitos y Configuración Inicial
 
 Asegúrate de tener **Python 3** instalado en tu sistema. Si no lo tienes, puedes descargarlo desde python.org.
 
 > **Importante:** Durante la instalación en Windows, asegúrate de marcar la casilla que dice **"Add Python to PATH"**.
 
-### 2. Clonar el Repositorio
+### 2. Clonar o Descargar el Proyecto
 
 Abre una terminal y clona este repositorio en tu máquina:
 

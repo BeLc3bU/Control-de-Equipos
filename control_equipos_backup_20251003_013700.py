@@ -12,15 +12,148 @@ import json
 import smtplib
 from email.message import EmailMessage
 
-# --- IMPORTACIONES MEJORADAS ---
-from config import Config
-from logger import logger
-from validators import Validator
-from database_improved import Database
-from file_utils import copy_document, open_file
+# --- CONFIGURACIÓN INICIAL ---
+DB_NAME = "control_equipos.db"
+DOCS_BASE_DIR = "docs"
+
+# --- CONFIGURACIÓN SMTP (MODIFICAR CON TUS DATOS) ---
+SMTP_SERVER = "smtp.example.com"
+SMTP_PORT = 587
+SMTP_USER = "user@example.com"
+SMTP_PASSWORD = "your_password"
+EMAIL_RECIPIENT = "recipient@example.com"
 
 
+class Database:
+    """Clase para gestionar la conexión y operaciones con la base de datos SQLite."""
+    def __init__(self, db_name):
+        self.db_name = db_name
 
+    def _get_connection(self):
+        """Retorna una conexión a la base de datos."""
+        conn = sqlite3.connect(self.db_name)
+        conn.row_factory = sqlite3.Row  # Permite acceder a las columnas por nombre
+        return conn
+
+    def execute_query(self, query, params=()):
+        """Ejecuta una consulta (INSERT, UPDATE, DELETE)."""
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, params)
+                conn.commit()
+                return cursor.lastrowid
+        except sqlite3.Error as e:
+            print(f"Error en la base de datos: {e}")
+            messagebox.showerror("Error de Base de Datos", f"No se pudo ejecutar la operación.\n\nError: {e}")
+            return None
+
+    def fetch_query(self, query, params=(), one=False):
+        """Ejecuta una consulta de selección (SELECT)."""
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, params)
+                if one:
+                    return cursor.fetchone()
+                return cursor.fetchall()
+        except sqlite3.Error as e:
+            print(f"Error en la base de datos: {e}")
+            return None if one else []
+
+    def setup(self):
+        """Crea la tabla 'equipos' si no existe con la nueva estructura."""
+        query = """
+        CREATE TABLE IF NOT EXISTS equipos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre_equipo TEXT,
+            pn TEXT NOT NULL,
+            sn TEXT NOT NULL UNIQUE,
+            estado_entrada TEXT,
+            numero_ot TEXT,
+            defect_report TEXT,
+            obs_entrada TEXT,
+            fecha_entrada TEXT,
+            doc_entrada TEXT,
+            fotos TEXT,
+            estado_salida TEXT,
+            log_trabajo TEXT,
+            obs_salida TEXT,
+            cerrado INTEGER DEFAULT 0,
+            fecha_cierre TEXT,
+            contenedor INTEGER,
+            destino TEXT,
+            horas_trabajo REAL,
+            obs_cierre TEXT,
+            certificado_cat TEXT,
+            defect_report_final TEXT,
+            fecha_salida TEXT,
+            inventario INTEGER DEFAULT 1
+        );
+        """
+        self.execute_query(query)
+
+# --- LÓGICA DE LA APLICACIÓN ---
+db = Database(DB_NAME)
+
+def setup_environment():
+    """Crea la base de datos y el directorio de documentos si no existen."""
+    db.setup()
+    if not os.path.exists(DOCS_BASE_DIR):
+        os.makedirs(DOCS_BASE_DIR)
+
+def copy_document(source_path, pn, sn, doc_type_folder):
+    """Copia un documento a la carpeta organizada (entrada, trabajo, cierre)."""
+    if not source_path:
+        return ""
+    
+    filename = os.path.basename(source_path)
+    target_dir = os.path.join(DOCS_BASE_DIR, f"{pn}_{sn}", doc_type_folder)
+    
+    os.makedirs(target_dir, exist_ok=True)
+        
+    target_path = os.path.join(target_dir, filename)
+    shutil.copy(source_path, target_path)
+    return target_path
+
+def open_file(path):
+    """Abre un archivo con el programa predeterminado del sistema."""
+    if not path or not os.path.exists(path):
+        messagebox.showwarning("Archivo no encontrado", "El documento no existe o la ruta es incorrecta.")
+        return
+    try:
+        if sys.platform == "win32":
+            os.startfile(path)
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", path])
+        else:
+            subprocess.Popen(["xdg-open", path])
+    except Exception as e:
+        messagebox.showerror("Error al abrir", f"No se pudo abrir el archivo: {e}")
+
+def send_email_notification(subject, body):
+    """Envía una notificación por correo electrónico usando SMTP."""
+    if SMTP_SERVER == "smtp.example.com":
+        messagebox.showwarning("Configuración Requerida", "La función de correo no está configurada.\nEdita las constantes SMTP en el script.")
+        return
+
+    msg = EmailMessage()
+    msg.set_content(body)
+    msg['Subject'] = subject
+    msg['From'] = SMTP_USER
+    msg['To'] = EMAIL_RECIPIENT
+
+    try:
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.send_message(msg)
+        messagebox.showinfo("Correo Enviado", "La notificación de cierre ha sido enviada correctamente.")
+    except Exception as e:
+        messagebox.showerror("Error de Correo", f"No se pudo enviar el correo.\n\nError: {e}")
+
+
+# --- INTERFAZ GRÁFICA (GUI) ---
 
 class App(tk.Tk):
     def __init__(self):
@@ -36,6 +169,7 @@ class App(tk.Tk):
         top_panel.pack(fill=tk.X, pady=5)
 
         ttk.Button(top_panel, text="Registrar Nuevo Equipo", command=self.open_entry_window).pack(side=tk.LEFT, padx=5)
+        ttk.Button(top_panel, text="Refrescar Tabla", command=self.refresh_table).pack(side=tk.LEFT, padx=5)
         ttk.Button(top_panel, text="Exportar a Excel", command=self.export_to_excel).pack(side=tk.LEFT, padx=5)
         ttk.Button(top_panel, text="Generar Informe de Inventario", command=self.generate_inventory_report).pack(side=tk.LEFT, padx=5)
         
@@ -49,29 +183,18 @@ class App(tk.Tk):
         self.inventory_filter.pack(side=tk.LEFT)
         self.inventory_filter.bind("<<ComboboxSelected>>", self.refresh_table)
 
-        ttk.Label(filter_frame, text="Buscar (OT/Nombre/PN/SN):").pack(side=tk.LEFT, padx=(10, 2))
+        ttk.Label(filter_frame, text="Buscar (Nombre/PN/SN):").pack(side=tk.LEFT, padx=(10, 2))
         self.search_var = tk.StringVar()
         self.search_var.trace_add("write", lambda *args: self.refresh_table())
         ttk.Entry(filter_frame, textvariable=self.search_var, width=30).pack(side=tk.LEFT)
 
-        # --- Tabla de Equipos (TreeView) - ORDEN MODIFICADO ---
-        self.cols = ("OT", "Nombre", "PN", "SN", "Estado Entrada", "Fecha Entrada", "Estado Salida", "Fecha Cierre", "Inventario")
-        self.tree = ttk.Treeview(main_frame, columns=self.cols, show="headings")
+        # --- Tabla de Equipos (TreeView) ---
+        cols = ("ID", "Nombre", "PN", "SN", "Estado Entrada", "Fecha Entrada", "Estado Salida", "Cerrado", "Inventario")
+        self.tree = ttk.Treeview(main_frame, columns=cols, show="headings")
         self.tree.pack(fill=tk.BOTH, expand=True, pady=10)
 
-        col_widths = {
-            "OT": 120, 
-            "Nombre": 200, 
-            "PN": 150, 
-            "SN": 150, 
-            "Estado Entrada": 100, 
-            "Fecha Entrada": 120, 
-            "Estado Salida": 100, 
-            "Fecha Cierre": 120, 
-            "Inventario": 80
-        }
-
-        for col in self.cols:
+        col_widths = {"ID": 40, "Nombre": 200, "PN": 150, "SN": 150, "Estado Entrada": 100, "Fecha Entrada": 120, "Estado Salida": 100, "Cerrado": 80, "Inventario": 80}
+        for col in cols:
             self.tree.heading(col, text=col, command=lambda _col=col: self.sort_column(_col, False))
             self.tree.column(col, width=col_widths.get(col, 100), anchor=tk.CENTER)
         
@@ -105,16 +228,13 @@ class App(tk.Tk):
         search_term = self.search_var.get().strip()
         inv_filter = self.inventory_filter.get()
 
-        # --- QUERY MODIFICADA PARA NUEVAS COLUMNAS ---
-        query = """SELECT id, numero_ot, nombre_equipo, pn, sn, estado_entrada, 
-                   fecha_entrada, estado_salida, fecha_cierre, inventario 
-                   FROM equipos"""
+        query = "SELECT id, nombre_equipo, pn, sn, estado_entrada, fecha_entrada, estado_salida, cerrado, inventario FROM equipos"
         conditions = []
         params = []
 
         if search_term:
-            conditions.append("(numero_ot LIKE ? OR nombre_equipo LIKE ? OR pn LIKE ? OR sn LIKE ?)")
-            params.extend([f"%{search_term}%", f"%{search_term}%", f"%{search_term}%", f"%{search_term}%"])
+            conditions.append("(nombre_equipo LIKE ? OR pn LIKE ? OR sn LIKE ?)")
+            params.extend([f"%{search_term}%", f"%{search_term}%", f"%{search_term}%"])
         
         if inv_filter == "En Inventario":
             conditions.append("inventario = 1")
@@ -128,14 +248,13 @@ class App(tk.Tk):
 
         records = db.fetch_query(query, tuple(params))
         for row in records:
-            # --- VALORES MODIFICADOS PARA COINCIDIR CON LAS NUEVAS COLUMNAS ---
             values = (
-                row['numero_ot'], row['nombre_equipo'], row['pn'], row['sn'],
+                row['id'], row['nombre_equipo'], row['pn'], row['sn'],
                 row['estado_entrada'], row['fecha_entrada'], row['estado_salida'],
-                row['fecha_cierre'] or "", # Muestra la fecha de cierre o nada
+                "Sí" if row['cerrado'] else "No",
                 "Dentro" if row['inventario'] else "Fuera"
             )
-            self.tree.insert("", tk.END, iid=row['id'], values=values)
+            self.tree.insert("", tk.END, values=values)
         
         self.update_stats()
 
@@ -152,11 +271,13 @@ class App(tk.Tk):
 
     def on_double_click(self, event):
         """Abre la ventana de detalles/gestión para el equipo seleccionado."""
-        # Obtenemos el ID interno que guardamos al insertar la fila
-        record_id = self.tree.focus()
-        if not record_id:
+        item_id_str = self.tree.focus()
+        if not item_id_str:
             return
-
+        
+        item_values = self.tree.item(item_id_str, "values")
+        record_id = item_values[0]
+        
         ManageEquipmentWindow(self, record_id)
 
     def export_to_excel(self):
@@ -173,7 +294,7 @@ class App(tk.Tk):
             return
 
         data = [self.tree.item(item)['values'] for item in items]
-        columns = self.cols
+        columns = [self.tree.heading(col)['text'] for col in self.tree['columns']]
         df = pd.DataFrame(data, columns=columns)
         
         try:
@@ -294,64 +415,26 @@ class EntryWindow(tk.Toplevel):
     def save_entry(self):
         data = {key: entry.get().strip() for key, entry in self.entries.items()}
         
-        # --- VALIDACIÓN MEJORADA ---
-        is_valid_pn, pn_error = Validator.validate_pn(data["pn"])
-        if not is_valid_pn:
-            messagebox.showerror("Error de Validación - PN", pn_error)
-            self.entries["pn"].focus()
-            return
-            
-        is_valid_sn, sn_error = Validator.validate_sn(data["sn"])
-        if not is_valid_sn:
-            messagebox.showerror("Error de Validación - SN", sn_error)
-            self.entries["sn"].focus()
+        if not data["pn"] or not data["sn"]:
+            messagebox.showerror("Error de Validación", "PN y SN son campos obligatorios.")
             return
 
-        is_valid_ot, ot_error = Validator.validate_ot(data["numero_ot"])
-        if not is_valid_ot:
-            messagebox.showerror("Error de Validación - Nº OT", ot_error)
-            self.entries["numero_ot"].focus()
+        if db.fetch_query("SELECT id FROM equipos WHERE sn = ?", (data["sn"],), one=True):
+            messagebox.showerror("Error de Duplicado", f"El Serial Number '{data['sn']}' ya existe.")
             return
 
-        if db.fetch_query("SELECT id FROM equipos WHERE numero_ot = ?", (data["numero_ot"],), one=True):
-            messagebox.showerror("Error de Duplicado", f"La Orden Técnica '{data['numero_ot']}' ya existe en la base de datos.")
-            self.entries["numero_ot"].focus()
-            return
-
-        # --- LÓGICA PARA LA NUEVA ESTRUCTURA DE CARPETAS ---
-        # 1. Contar registros existentes para este PN/SN para determinar el número de "Arising"
-        arising_count_row = db.fetch_query(
-            "SELECT COUNT(*) FROM equipos WHERE pn = ? AND sn = ?",
-            (data["pn"], data["sn"]),
-            one=True
-        )
-        arising_number = arising_count_row[0] if arising_count_row else 0
-        
-        # 2. Construir la ruta de la carpeta de documentos para este ciclo
-        arising_folder = f"Arising{arising_number:02d}"
-        # Limpiar nombres para que sean válidos como carpetas
-        safe_equipo_nombre = "".join(c for c in data["nombre_equipo"] if c.isalnum() or c in (' ', '_')).rstrip()
-        doc_folder_path = os.path.join(Config.DOCS_BASE_DIR, safe_equipo_nombre, data["sn"], arising_folder)
-
-        # 3. Copiar el documento de entrada a la nueva ruta
-        doc_target_path = copy_document(self.doc_path.get(), doc_folder_path)
+        doc_target_path = copy_document(self.doc_path.get(), data["pn"], data["sn"], "entrada")
 
         query = """
-        INSERT INTO equipos (
-            nombre_equipo, pn, sn, numero_ot, defect_report, estado_entrada,
-            obs_entrada, doc_entrada, fecha_entrada, cerrado, inventario, doc_folder_path
-        )
-        VALUES (:nombre_equipo, :pn, :sn, :numero_ot, :defect_report, :estado_entrada, :obs_entrada, :doc_entrada, :fecha_entrada, :cerrado, :inventario, :doc_folder_path)
+        INSERT INTO equipos (nombre_equipo, pn, sn, numero_ot, defect_report, estado_entrada, obs_entrada, doc_entrada, fecha_entrada)
+        VALUES (:nombre_equipo, :pn, :sn, :numero_ot, :defect_report, :estado_entrada, :obs_entrada, :doc_entrada, :fecha_entrada)
         """
         params = {
             **data,
             "estado_entrada": self.estado_entrada_combo.get(),
             "obs_entrada": self.obs_entrada_text.get("1.0", tk.END).strip(),
             "doc_entrada": doc_target_path,
-            "fecha_entrada": datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "cerrado": 0,
-            "inventario": 1,
-            "doc_folder_path": doc_folder_path
+            "fecha_entrada": datetime.now().strftime("%Y-%m-%d %H:%M")
         }
         
         if db.execute_query(query, params):
@@ -483,28 +566,10 @@ class ManageEquipmentWindow(tk.Toplevel):
         log_frame.columnconfigure(0, weight=1)
         log_frame.rowconfigure(0, weight=1) # El historial crece
         log_frame.rowconfigure(1, weight=0) # La nueva entrada no
-        
-        # --- TABLA PARA EL HISTORIAL DE INTERVENCIONES ---
-        log_table_frame = ttk.Frame(log_frame)
-        log_table_frame.grid(row=0, column=0, columnspan=2, sticky="nsew", pady=5)
-        log_table_frame.columnconfigure(0, weight=1)
-        log_table_frame.rowconfigure(0, weight=1)
 
-        log_cols = ("Fecha", "Intervención")
-        self.log_tree = ttk.Treeview(log_table_frame, columns=log_cols, show="headings")
-        
-        vsb = ttk.Scrollbar(log_table_frame, orient="vertical", command=self.log_tree.yview)
-        self.log_tree.configure(yscrollcommand=vsb.set)
-
-        self.log_tree.heading("Fecha", text="Fecha de Intervención")
-        self.log_tree.heading("Intervención", text="Descripción")
-        self.log_tree.column("Fecha", width=150, anchor=tk.W)
-        self.log_tree.column("Intervención", width=500)
-
-        self.log_tree.grid(row=0, column=0, sticky="nsew")
-        vsb.grid(row=0, column=1, sticky="ns")
-
-        self.refresh_log_table() # Cargar datos iniciales
+        self.log_display = tk.Text(log_frame, height=8, state="disabled", background="#f0f0f0")
+        self.log_display.grid(row=0, column=0, columnspan=2, sticky="nsew", pady=5)
+        self.log_display.insert("1.0", self.data['log_trabajo'] or "No hay intervenciones registradas.")
 
         self.new_log_entry = tk.Text(log_frame, height=3)
         self.new_log_entry.grid(row=1, column=0, sticky="ew", pady=5)
@@ -599,44 +664,20 @@ class ManageEquipmentWindow(tk.Toplevel):
             return
 
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-        
-        # Cargar el log actual, que debería ser JSON
-        try:
-            # Si hay datos y no están vacíos, cárgalos. Si no, empieza con una lista vacía.
-            current_log_list = json.loads(self.data['log_trabajo']) if self.data['log_trabajo'] else []
-        except (json.JSONDecodeError, TypeError):
-            # Si el dato antiguo no es JSON, lo preservamos y creamos una nueva estructura
-            current_log_list = [{
-                "timestamp": "Fecha Antigua",
-                "entry": self.data['log_trabajo'] or "Dato anterior sin formato."
-            }]
+        formatted_entry = f"--- Registro del {timestamp} ---\n{new_entry}\n\n"
 
-        # Añadir la nueva entrada al principio de la lista
-        new_log_item = {"timestamp": timestamp, "entry": new_entry}
-        current_log_list.insert(0, new_log_item)
-
-        # Convertir la lista a string JSON para guardarla
-        updated_log_json = json.dumps(current_log_list, indent=2)
+        current_log = self.data['log_trabajo'] or ""
+        updated_log = formatted_entry + current_log
 
         query = "UPDATE equipos SET log_trabajo = ? WHERE id = ?"
-        if db.execute_query(query, (updated_log_json, self.record_id)) is not None:
+        if db.execute_query(query, (updated_log, self.record_id)) is not None:
             self.new_log_entry.delete("1.0", tk.END)
+            self.log_display.config(state="normal")
+            self.log_display.delete("1.0", tk.END)
+            self.log_display.insert("1.0", updated_log)
+            self.log_display.config(state="disabled")
             self.load_data() # Recargar datos para que self.data esté actualizado
-            self.refresh_log_table() # Refrescar la tabla del historial
             messagebox.showinfo("Éxito", "Intervención añadida al historial.")
-
-    def refresh_log_table(self):
-        """Limpia y recarga la tabla del historial de intervenciones."""
-        self.log_tree.delete(*self.log_tree.get_children())
-        
-        try:
-            log_entries = json.loads(self.data['log_trabajo'] or '[]')
-            for entry in log_entries:
-                self.log_tree.insert("", tk.END, values=(entry.get("timestamp", ""), entry.get("entry", "")))
-        except (json.JSONDecodeError, TypeError):
-            # Si los datos no son JSON (formato antiguo), muéstralos como una sola fila
-            if self.data['log_trabajo']:
-                self.log_tree.insert("", tk.END, values=("Historial Antiguo", self.data['log_trabajo']))
 
     def add_files(self, title, filetypes):
         """Añade archivos genéricos a la lista de 'fotos' del equipo."""
@@ -647,7 +688,7 @@ class ManageEquipmentWindow(tk.Toplevel):
         current_files = json.loads(self.data['fotos'] or '[]')
         
         for path in paths:
-            new_path = copy_document(path, self.data['doc_folder_path'])
+            new_path = copy_document(path, self.data['pn'], self.data['sn'], "trabajo")
             if new_path not in current_files:
                 current_files.append(new_path)
         
@@ -671,14 +712,6 @@ class ManageEquipmentWindow(tk.Toplevel):
         data_to_save['obs_cierre'] = self.obs_cierre_text.get("1.0", tk.END).strip()
         data_to_save['cerrado'] = 1
         data_to_save['fecha_cierre'] = datetime.now().strftime("%Y-%m-%d %H:%M")
-        
-        # Validar horas de trabajo antes de guardar
-        is_valid_hours, hours_error = Validator.validate_hours(data_to_save['horas_trabajo'])
-        if not is_valid_hours:
-            messagebox.showerror("Validación Fallida", f"Horas de trabajo no válidas: {hours_error}")
-            return
-        # Convertir a float o None si está vacío
-        data_to_save['horas_trabajo'] = float(data_to_save['horas_trabajo']) if data_to_save['horas_trabajo'] else None
 
         query = """UPDATE equipos SET 
                    destino = :destino, horas_trabajo = :horas_trabajo, contenedor = :contenedor, 
@@ -688,10 +721,6 @@ class ManageEquipmentWindow(tk.Toplevel):
 
         if db.execute_query(query, params) is not None:
             messagebox.showinfo("Éxito", "Equipo cerrado correctamente.")
-            # Preguntar si se quiere enviar la notificación ahora
-            if messagebox.askyesno("Enviar Notificación", "¿Desea enviar la notificación de cierre por correo ahora?"):
-                self.send_close_email()
-
             self.on_close()
 
     def send_close_email(self):
@@ -737,7 +766,7 @@ class ManageEquipmentWindow(tk.Toplevel):
         if not path:
             return
         
-        new_path = copy_document(path, self.data['doc_folder_path'])
+        new_path = copy_document(path, self.data['pn'], self.data['sn'], "cierre")
         
         field_to_update = "certificado_cat" if doc_type == 'cat' else "defect_report_final"
         query = f"UPDATE equipos SET {field_to_update} = ? WHERE id = ?"
@@ -821,50 +850,8 @@ class MaterialRequestWindow(tk.Toplevel):
         self.destroy()
 
 
-def send_email_notification(subject: str, body: str):
-    """Función centralizada para enviar notificaciones por correo."""
-    if not Config.is_smtp_configured():
-        logger.warning("Intento de enviar correo, pero SMTP no está configurado en .env")
-        messagebox.showwarning(
-            "SMTP no configurado",
-            "La configuración de correo no está completa en el archivo .env.\n"
-            "No se puede enviar la notificación."
-        )
-        return
-
-    msg = EmailMessage()
-    msg.set_content(body)
-    msg['Subject'] = subject
-    msg['From'] = Config.SMTP_USER
-    msg['To'] = Config.EMAIL_RECIPIENT
-
-    try:
-        with smtplib.SMTP(Config.SMTP_SERVER, Config.SMTP_PORT) as server:
-            server.starttls()
-            server.login(Config.SMTP_USER, Config.SMTP_PASSWORD)
-            server.send_message(msg)
-        messagebox.showinfo("Correo Enviado", "La notificación por correo se ha enviado correctamente.")
-        logger.info(f"Correo enviado a {Config.EMAIL_RECIPIENT} con asunto: {subject}")
-    except Exception as e:
-        logger.error(f"Error al enviar correo: {e}")
-        messagebox.showerror("Error de Correo", f"No se pudo enviar la notificación.\nError: {e}")
-
-def setup_environment():
-    """Inicializa el entorno de la aplicación (BD, carpetas)."""
-    global db
-    # Crear la carpeta de documentos si no existe
-    if not os.path.exists(Config.DOCS_BASE_DIR):
-        os.makedirs(Config.DOCS_BASE_DIR)
-        logger.info(f"Directorio de documentos creado: {Config.DOCS_BASE_DIR}")
-
-    # Inicializar y configurar la base de datos
-    db = Database(Config.DB_NAME)
-    db.setup()
-    logger.info("Entorno configurado correctamente.")
-
 # --- PUNTO DE ENTRADA PRINCIPAL ---
 if __name__ == "__main__":
-    db = None  # Variable global para la base de datos
     setup_environment()
     app = App()
     app.mainloop()

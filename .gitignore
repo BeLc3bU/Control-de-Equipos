@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Entorno virtual
+venv/
+env/
+ENV/
+
+# Configuración sensible
+.env
+
+# Base de datos y logs
+*.db
+*.log
+
+# Documentos
+docs/
+
+# Backups
+*_backup_*.py
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

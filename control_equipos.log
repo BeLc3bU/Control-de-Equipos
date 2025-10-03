@@ -1,0 +1,66 @@
+2025-10-03 01:42:26 - ControlEquipos - INFO - Inicializando base de datos: control_equipos.db
+2025-10-03 01:42:26 - ControlEquipos - INFO - Estructura de base de datos verificada/creada
+2025-10-03 01:42:26 - ControlEquipos - INFO - Entorno configurado correctamente.
+2025-10-03 01:44:31 - ControlEquipos - INFO - Inicializando base de datos: control_equipos.db
+2025-10-03 01:44:31 - ControlEquipos - INFO - Estructura de base de datos verificada/creada
+2025-10-03 01:44:31 - ControlEquipos - INFO - Entorno configurado correctamente.
+2025-10-03 01:45:01 - ControlEquipos - ERROR - Error al enviar correo: 'ascii' codec can't encode character '\xf1' in position 31: ordinal not in range(128)
+2025-10-03 01:53:13 - ControlEquipos - INFO - Inicializando base de datos: control_equipos.db
+2025-10-03 01:53:13 - ControlEquipos - INFO - Estructura de base de datos verificada/creada
+2025-10-03 01:53:13 - ControlEquipos - INFO - Entorno configurado correctamente.
+2025-10-03 01:55:43 - ControlEquipos - ERROR - Error al enviar correo: 'ascii' codec can't encode character '\xf1' in position 31: ordinal not in range(128)
+2025-10-03 01:56:16 - ControlEquipos - INFO - Archivo copiado exitosamente: C:/Users/pubes/Downloads/Nueva carpeta/CAT.txt -> docs\CSMU\233\Arising00\CAT.txt
+2025-10-03 01:58:46 - ControlEquipos - INFO - Archivo copiado exitosamente: C:/Users/pubes/Downloads/Nueva carpeta/CAT.txt -> docs\CSMU\233\Arising01\CAT.txt
+2025-10-03 01:59:07 - ControlEquipos - INFO - Abriendo archivo: docs\CSMU\233\Arising01\CAT.txt
+2025-10-03 02:02:23 - ControlEquipos - INFO - Inicializando base de datos: control_equipos.db
+2025-10-03 02:02:23 - ControlEquipos - INFO - Estructura de base de datos verificada/creada
+2025-10-03 02:02:23 - ControlEquipos - INFO - Entorno configurado correctamente.
+2025-10-03 02:05:06 - ControlEquipos - INFO - Inicializando base de datos: control_equipos.db
+2025-10-03 02:05:06 - ControlEquipos - INFO - Estructura de base de datos verificada/creada
+2025-10-03 02:05:06 - ControlEquipos - INFO - Entorno configurado correctamente.
+2025-10-03 02:09:30 - ControlEquipos - INFO - Inicializando base de datos: control_equipos.db
+2025-10-03 02:09:30 - ControlEquipos - INFO - Estructura de base de datos verificada/creada
+2025-10-03 02:09:30 - ControlEquipos - INFO - Entorno configurado correctamente.
+2025-10-03 02:13:45 - ControlEquipos - INFO - Inicializando base de datos: control_equipos.db
+2025-10-03 02:13:45 - ControlEquipos - INFO - Estructura de base de datos verificada/creada
+2025-10-03 02:13:45 - ControlEquipos - INFO - Entorno configurado correctamente.
+2025-10-03 02:20:05 - ControlEquipos - INFO - Inicializando base de datos: control_equipos.db
+2025-10-03 02:20:05 - ControlEquipos - INFO - Estructura de base de datos verificada/creada
+2025-10-03 02:20:05 - ControlEquipos - INFO - Entorno configurado correctamente para PyQt.
+2025-10-03 02:24:26 - ControlEquipos - INFO - Inicializando base de datos: control_equipos.db
+2025-10-03 02:24:26 - ControlEquipos - INFO - Estructura de base de datos verificada/creada
+2025-10-03 02:24:26 - ControlEquipos - INFO - Entorno configurado correctamente para PyQt.
+2025-10-03 02:29:49 - ControlEquipos - INFO - Inicializando base de datos: control_equipos.db
+2025-10-03 02:29:49 - ControlEquipos - INFO - Estructura de base de datos verificada/creada
+2025-10-03 02:29:49 - ControlEquipos - INFO - Entorno configurado correctamente para PyQt.
+2025-10-03 02:31:05 - ControlEquipos - ERROR - Error al enviar correo: 'ascii' codec can't encode character '\xf1' in position 31: ordinal not in range(128)
+2025-10-03 02:32:36 - ControlEquipos - INFO - Inicializando base de datos: control_equipos.db
+2025-10-03 02:32:36 - ControlEquipos - INFO - Estructura de base de datos verificada/creada
+2025-10-03 02:32:36 - ControlEquipos - INFO - Entorno configurado correctamente para PyQt.
+2025-10-03 02:33:31 - ControlEquipos - INFO - Inicializando base de datos: control_equipos.db
+2025-10-03 02:33:31 - ControlEquipos - INFO - Estructura de base de datos verificada/creada
+2025-10-03 02:33:31 - ControlEquipos - INFO - Entorno configurado correctamente para PyQt.
+2025-10-03 02:35:30 - ControlEquipos - INFO - Inicializando base de datos: control_equipos.db
+2025-10-03 02:35:30 - ControlEquipos - INFO - Estructura de base de datos verificada/creada
+2025-10-03 02:35:30 - ControlEquipos - INFO - Entorno configurado correctamente para PyQt.
+2025-10-03 02:37:50 - ControlEquipos - INFO - Inicializando base de datos: control_equipos.db
+2025-10-03 02:37:50 - ControlEquipos - INFO - Estructura de base de datos verificada/creada
+2025-10-03 02:37:50 - ControlEquipos - INFO - Entorno configurado correctamente para PyQt.
+2025-10-03 02:44:00 - ControlEquipos - INFO - Inicializando base de datos: control_equipos.db
+2025-10-03 02:44:00 - ControlEquipos - INFO - Estructura de base de datos verificada/creada
+2025-10-03 02:44:00 - ControlEquipos - INFO - Entorno configurado correctamente para PyQt.
+2025-10-03 02:44:43 - ControlEquipos - INFO - Abriendo Gmail para enviar correo con asunto: Solicitud de Material para OT 202502 (SN: 233)
+2025-10-03 02:48:05 - ControlEquipos - INFO - Abriendo Gmail para enviar correo con asunto: Cierre de Equipo - OT 202503 - SN 3434
+2025-10-03 02:50:44 - ControlEquipos - INFO - Inicializando base de datos: control_equipos.db
+2025-10-03 02:50:44 - ControlEquipos - INFO - Estructura de base de datos verificada/creada
+2025-10-03 02:50:44 - ControlEquipos - INFO - Entorno configurado correctamente para PyQt.
+2025-10-03 02:51:37 - ControlEquipos - INFO - Abriendo Gmail para enviar correo con asunto: Solicitud de Material para OT 202503 (SN: 3434)
+2025-10-03 03:03:42 - ControlEquipos - INFO - Inicializando base de datos: control_equipos.db
+2025-10-03 03:03:42 - ControlEquipos - INFO - Estructura de base de datos verificada/creada
+2025-10-03 03:03:42 - ControlEquipos - INFO - Entorno configurado correctamente para PyQt.
+2025-10-03 03:07:17 - ControlEquipos - INFO - Inicializando base de datos: control_equipos.db
+2025-10-03 03:07:17 - ControlEquipos - INFO - Estructura de base de datos verificada/creada
+2025-10-03 03:07:17 - ControlEquipos - INFO - Entorno configurado correctamente para PyQt.
+2025-10-03 03:20:29 - ControlEquipos - INFO - Inicializando base de datos: control_equipos.db
+2025-10-03 03:20:29 - ControlEquipos - INFO - Estructura de base de datos verificada/creada
+2025-10-03 03:20:29 - ControlEquipos - INFO - Entorno configurado correctamente para PyQt.
