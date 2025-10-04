@@ -117,6 +117,7 @@ tu-repositorio/
 ├── control_equipos.py     # Script principal de la aplicación
 ├── control_equipos.db     # Base de datos SQLite (generada automáticamente)
 └── README.md              # Este archivo
+```
 
 ---
 
