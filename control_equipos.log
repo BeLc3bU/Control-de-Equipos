@@ -220,3 +220,7 @@
 2025-10-03 15:29:23 - ControlEquipos - INFO - Estructura de base de datos verificada/creada
 2025-10-03 15:29:23 - ControlEquipos - INFO - Entorno configurado correctamente para PyQt.
 2025-10-03 15:29:23 - ControlEquipos - INFO - Multithreading con un máximo de 4 hilos.
+2025-10-04 09:08:32 - ControlEquipos - INFO - Inicializando base de datos: control_equipos.db
+2025-10-04 09:08:32 - ControlEquipos - INFO - Estructura de base de datos verificada/creada
+2025-10-04 09:08:32 - ControlEquipos - INFO - Entorno configurado correctamente para PyQt.
+2025-10-04 09:08:32 - ControlEquipos - INFO - Multithreading con un máximo de 4 hilos.

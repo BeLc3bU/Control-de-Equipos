@@ -117,4 +117,26 @@ tu-repositorio/
 ├── control_equipos.py     # Script principal de la aplicación
 ├── control_equipos.db     # Base de datos SQLite (generada automáticamente)
 └── README.md              # Este archivo
+
+---
+
+## 🗺️ Roadmap de Futuras Mejoras
+
+Esta es una lista de las próximas características y mejoras planificadas para la aplicación:
+
+*   **Validación Estricta de Campos:** Implementar validación en tiempo real que marque visualmente los campos obligatorios (ej. `PN`, `SN`, `OT`) y deshabilite el botón de guardar hasta que se completen.
+*   **Autocompletado para Nombres de Equipo:** Reemplazar el campo de texto libre "Nombre Equipo" por un `QComboBox` editable que sugiera nombres de equipos ya existentes para estandarizar la nomenclatura.
+*   **Reubicación de Documentación Final:** Mover la subida del `Certificado CAT` y el `DR Final` desde la pestaña de "Cierre" a la de "Salida de Inventario", para reforzar el flujo de que la salida solo es posible con la documentación final adjunta.
+*   **Reducción de Entrada Manual:** Explorar la automatización de campos. Por ejemplo, al introducir un `PN` existente, autocompletar el `Nombre del Equipo` o generar automáticamente el `Nº OT` siguiendo un patrón predefinido.
+*   **Modernización de Informes PDF:** Rediseñar la plantilla del informe PDF para un formato más profesional, incluyendo un encabezado con logo, pies de página con numeración, y una tabla de resumen.
+*   **Búsqueda Avanzada con Criterios:** Mejorar la búsqueda permitiendo al usuario seleccionar un criterio específico (`PN`, `SN`, `OT`, `Estado`) desde un `QComboBox` para realizar búsquedas más precisas.
+*   **Integración de Captura por Cámara:** Añadir una función que permita abrir una cámara web para tomar fotos directamente desde la aplicación y adjuntarlas al equipo.
+*   **Sistema de Autenticación y Roles:** Implementar un sistema de login para controlar el acceso. Se definirán roles (ej. `Técnico`, `Administrador`) con diferentes niveles de permisos.
+*   **Panel de Administración Web:** Desarrollar una interfaz web de administración (`backend`) que permita a los usuarios con rol de `Administrador` realizar operaciones de mantenimiento directamente sobre la base de datos (editar o eliminar registros de forma segura).
+
+---
+
+## 📄 Licencia
+
+Este proyecto está bajo la Licencia MIT. Consulta el archivo `LICENSE` para más detalles.
 ```
