@@ -16,6 +16,13 @@ Una aplicación de escritorio moderna desarrollada en Python y **PyQt6** para ge
 ## 📋 Características Principales
 
 *   **Interfaz Moderna y Fluida:** Desarrollada con PyQt6 para una experiencia de usuario profesional y agradable.
+*   **Mejoras de UI/UX Avanzadas:**
+    *   **Validación en Tiempo Real:** Los formularios marcan los campos inválidos con un borde rojo y deshabilitan el botón de guardar hasta que todo sea correcto.
+    *   **Autocompletado Inteligente:** El campo "Nombre Equipo" es un combo editable que sugiere nombres existentes. Al introducir un PN, autocompleta el nombre del equipo.
+    *   **Feedback Visual Mejorado:** La tabla principal usa iconos de estado para una identificación rápida, tooltips detallados al pasar el ratón y coloreado de filas distintivo.
+    *   **Historial Enriquecido:** El historial de intervenciones ahora soporta texto enriquecido (negrita, listas, etc.).
+    *   **Menús Contextuales:** Acceso rápido a acciones como "Abrir Archivo" o "Abrir Carpeta Contenedora" con un clic derecho.
+*   **Copias de Seguridad y Restauración:** Funciones integradas para crear copias de seguridad comprimidas de la base de datos y restaurarlas de forma segura, con advertencias claras al usuario.
 *   **Flujo de Trabajo Completo:** Gestiona el ciclo de vida de un equipo a través de múltiples etapas: **Entrada**, **Trabajo**, **Cierre** y **Salida**.
 *   **Registro de Entrada Detallado:** Captura `nombre`, `PN`, `SN`, `estado`, `Nº OT`, `Nº DR`, `observaciones` y documentos adjuntos.
 *   **Panel de Gestión Centralizado:** Al hacer doble clic en un equipo, se abre una ventana con pestañas para:
@@ -125,16 +132,10 @@ tu-repositorio/
 
 Esta es una lista de las próximas características y mejoras planificadas para la aplicación:
 
-*   **Validación Estricta de Campos:** Implementar validación en tiempo real que marque visualmente los campos obligatorios (ej. `PN`, `SN`, `OT`) y deshabilite el botón de guardar hasta que se completen.
-*   **Autocompletado para Nombres de Equipo:** Reemplazar el campo de texto libre "Nombre Equipo" por un `QComboBox` editable que sugiera nombres de equipos ya existentes para estandarizar la nomenclatura.
-*   **Reubicación de Documentación Final:** Mover la subida del `Certificado CAT` y el `DR Final` desde la pestaña de "Cierre" a la de "Salida de Inventario", para reforzar el flujo de que la salida solo es posible con la documentación final adjunta.
-*   **Reducción de Entrada Manual:** Explorar la automatización de campos. Por ejemplo, al introducir un `PN` existente, autocompletar el `Nombre del Equipo` o generar automáticamente el `Nº OT` siguiendo un patrón predefinido.
-*   **Modernización de Informes PDF:** Rediseñar la plantilla del informe PDF para un formato más profesional, incluyendo un encabezado con logo, pies de página con numeración, y una tabla de resumen.
-*   **Búsqueda Avanzada con Criterios:** Mejorar la búsqueda permitiendo al usuario seleccionar un criterio específico (`PN`, `SN`, `OT`, `Estado`) desde un `QComboBox` para realizar búsquedas más precisas.
 *   **Integración de Captura por Cámara:** Añadir una función que permita abrir una cámara web para tomar fotos directamente desde la aplicación y adjuntarlas al equipo.
 *   **Sistema de Autenticación y Roles:** Implementar un sistema de login para controlar el acceso. Se definirán roles (ej. `Técnico`, `Administrador`) con diferentes niveles de permisos.
 *   **Panel de Administración Web:** Desarrollar una interfaz web de administración (`backend`) que permita a los usuarios con rol de `Administrador` realizar operaciones de mantenimiento directamente sobre la base de datos (editar o eliminar registros de forma segura).
-
+*   **Automatismo de Copia de Seguridad:** Configurar un sistema para que la aplicación realice copias de seguridad de la base de datos de forma automática y periódica.
 ---
 
 ## 📄 Licencia

@@ -2,6 +2,7 @@
 Validadores para campos críticos de la aplicación.
 """
 import re
+from datetime import datetime
 from typing import Tuple
 
 class Validator:
@@ -92,6 +93,18 @@ class Validator:
             return False, "Las horas deben ser un número válido"
     
     @staticmethod
+    def validate_date(date_str: str, date_format: str = "%Y-%m-%d %H:%M") -> Tuple[bool, str]:
+        """Valida que una fecha tenga el formato correcto."""
+        if not date_str or not date_str.strip():
+            return True, ""  # Las fechas pueden ser opcionales
+        
+        try:
+            datetime.strptime(date_str.strip(), date_format)
+            return True, ""
+        except ValueError:
+            return False, f"La fecha debe tener el formato: {date_format}"
+    
+    @staticmethod
     def validate_file_size(file_path: str, max_mb: int = 50) -> Tuple[bool, str]:
         """Valida que el archivo no exceda un tamaño máximo."""
         try:
@@ -102,3 +115,22 @@ class Validator:
             return True, ""
         except Exception as e:
             return False, f"Error al verificar tamaño del archivo: {e}"
+    
+    @staticmethod
+    def validate_duplicate_ot(db_session, ot: str, exclude_id: int = None) -> Tuple[bool, str]:
+        """Valida que el número de OT no esté duplicado."""
+        if not ot or not ot.strip():
+            return True, ""
+        
+        query = "SELECT id FROM equipos WHERE numero_ot = ?"
+        params = (ot.strip(),)
+        
+        if exclude_id:
+            query += " AND id != ?"
+            params = (ot.strip(), exclude_id)
+        
+        existing = db_session.fetch_query(query, params, one=True)
+        if existing:
+            return False, f"La Orden Técnica '{ot}' ya existe en el sistema"
+        
+        return True, ""

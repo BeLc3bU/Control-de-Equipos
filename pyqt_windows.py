@@ -6,7 +6,7 @@ from datetime import datetime
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QFormLayout, QHBoxLayout, QGridLayout,
     QLineEdit, QComboBox, QTextEdit, QPushButton, QLabel,
-    QFileDialog, QMessageBox, QTabWidget, QWidget, QListWidget, QStatusBar, QDateEdit,
+    QFileDialog, QMessageBox, QTabWidget, QWidget, QListWidget, QStatusBar, QDateEdit, QMenu,
     QTableView, QAbstractItemView, QHeaderView, QCheckBox
 )
 from PyQt6.QtGui import QStandardItemModel, QStandardItem
@@ -48,14 +48,20 @@ class EntryDialog(QDialog):
 
         # --- Widgets del Formulario ---
         self.entries = {}
-        fields = {
-            "Nombre Equipo:": "nombre_equipo",
+        
+        # Mejora: QComboBox editable para Nombre Equipo
+        self.entries["nombre_equipo"] = QComboBox()
+        self.entries["nombre_equipo"].setEditable(True)
+        self.load_existing_equipment_names()
+        form_layout.addRow("Nombre Equipo:", self.entries["nombre_equipo"])
+
+        line_edit_fields = {
             "PN (Part Number):": "pn",
             "SN (Serial Number):": "sn",
             "Nº OT (Orden Técnica):": "numero_ot",
             "Nº DR (Defect Report):": "defect_report"
         }
-        for label_text, key in fields.items():
+        for label_text, key in line_edit_fields.items():
             self.entries[key] = QLineEdit()
             form_layout.addRow(label_text, self.entries[key])
 
@@ -87,13 +93,13 @@ class EntryDialog(QDialog):
         button_layout.addStretch()
         cancel_button = QPushButton("Cancelar")
         cancel_button.setMinimumWidth(120)
-        cancel_button.clicked.connect(self.reject) # Cierra el diálogo sin hacer nada
-        save_button = QPushButton("Guardar Entrada")
-        save_button.setDefault(True)
-        save_button.setMinimumWidth(120)
-        save_button.clicked.connect(self.save_entry)
+        cancel_button.clicked.connect(self.reject)
+        self.save_button = QPushButton("Guardar Entrada")
+        self.save_button.setDefault(True)
+        self.save_button.setMinimumWidth(120)
+        self.save_button.clicked.connect(self.save_entry)
         button_layout.addWidget(cancel_button)
-        button_layout.addWidget(save_button)
+        button_layout.addWidget(self.save_button)
 
         main_layout.addLayout(button_layout)
 
@@ -105,11 +111,56 @@ class EntryDialog(QDialog):
         self.setTabOrder(self.entries["defect_report"], self.estado_entrada_combo)
         self.setTabOrder(self.estado_entrada_combo, self.obs_entrada_text)
         self.setTabOrder(self.obs_entrada_text, doc_button)
-        self.setTabOrder(doc_button, save_button)
-        self.setTabOrder(save_button, cancel_button)
+        self.setTabOrder(doc_button, self.save_button)
+        self.setTabOrder(self.save_button, cancel_button)
+
+        # --- Conexiones para Validación en Tiempo Real ---
+        self.entries["pn"].textChanged.connect(self.validate_form)
+        self.entries["sn"].textChanged.connect(self.validate_form)
+        self.entries["numero_ot"].textChanged.connect(self.validate_form)
+        self.entries["pn"].editingFinished.connect(self.autocomplete_from_pn)
+
+        self.validate_form() # Llamada inicial para deshabilitar el botón
 
         # QoL: Poner el foco en el primer campo
-        self.entries["nombre_equipo"].setFocus()
+        self.entries["nombre_equipo"].lineEdit().setFocus()
+
+    def load_existing_equipment_names(self):
+        """Carga nombres de equipo únicos desde la BD al QComboBox."""
+        query = "SELECT DISTINCT nombre_equipo FROM equipos ORDER BY nombre_equipo"
+        records = self.db.fetch_query(query)
+        if records:
+            names = [record['nombre_equipo'] for record in records]
+            self.entries["nombre_equipo"].addItems(names)
+
+    def autocomplete_from_pn(self):
+        """Autocompleta el nombre del equipo basado en el PN introducido."""
+        pn = self.entries["pn"].text().strip()
+        if not pn:
+            return
+        
+        query = "SELECT nombre_equipo FROM equipos WHERE pn = ? ORDER BY fecha_entrada DESC LIMIT 1"
+        result = self.db.fetch_query(query, (pn,), one=True)
+        
+        if result:
+            self.entries["nombre_equipo"].setCurrentText(result['nombre_equipo'])
+
+    def validate_form(self):
+        """Valida los campos obligatorios y actualiza la UI."""
+        pn_valid, _ = Validator.validate_pn(self.entries["pn"].text())
+        sn_valid, _ = Validator.validate_sn(self.entries["sn"].text())
+        ot_valid, _ = Validator.validate_ot(self.entries["numero_ot"].text())
+
+        # Estilo para PN
+        self.entries["pn"].setStyleSheet("border: 1px solid red;" if not pn_valid and self.entries["pn"].text() else "")
+        # Estilo para SN
+        self.entries["sn"].setStyleSheet("border: 1px solid red;" if not sn_valid and self.entries["sn"].text() else "")
+        # Estilo para OT
+        self.entries["numero_ot"].setStyleSheet("border: 1px solid red;" if not ot_valid and self.entries["numero_ot"].text() else "")
+
+        # Habilitar o deshabilitar el botón de guardar
+        all_valid = pn_valid and sn_valid and ot_valid
+        self.save_button.setEnabled(all_valid)
 
     def select_document(self):
         path, _ = QFileDialog.getOpenFileName(self, "Seleccionar documento SL2000")
@@ -117,7 +168,7 @@ class EntryDialog(QDialog):
             self.doc_path_label.setText(path)
 
     def save_entry(self):
-        data = {key: entry.text().strip() for key, entry in self.entries.items()}
+        data = {key: entry.text().strip() if isinstance(entry, QLineEdit) else entry.currentText().strip() for key, entry in self.entries.items()}
 
         # --- VALIDACIÓN (reutilizando tu lógica) ---
         validations = {
@@ -204,14 +255,38 @@ class InfoTab(QWidget):
         obs_entrada.setReadOnly(True)
         form_layout.addRow(QLabel("<b>Obs. Entrada:</b>"), obs_entrada)
         
+        # Información del vale de devolución
+        vale_status = "✅ Disponible" if self.data['vale_devolucion'] == "1" else "❌ No disponible"
+        form_layout.addRow(QLabel("<b>Vale de Devolución:</b>"), QLabel(vale_status))
+        
         layout.addLayout(form_layout)
 
         layout.addWidget(QLabel("<b>Documentos Adjuntos (doble clic para abrir):</b>"))
         self.docs_list = QListWidget()
         self.docs_list.doubleClicked.connect(self.open_selected_document)
+        # Mejora: Menú contextual
+        self.docs_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.docs_list.customContextMenuRequested.connect(self.show_docs_menu)
         layout.addWidget(self.docs_list)
         
         self.refresh_docs_list()
+
+    def show_docs_menu(self, position):
+        item = self.docs_list.itemAt(position)
+        if not item:
+            return
+
+        menu = QMenu()
+        open_action = menu.addAction("Abrir Archivo")
+        open_folder_action = menu.addAction("Abrir Carpeta Contenedora")
+        
+        action = menu.exec(self.docs_list.mapToGlobal(position))
+
+        if action == open_action:
+            open_file(item.text())
+        elif action == open_folder_action:
+            folder_path = os.path.dirname(item.text())
+            open_file(folder_path)
 
     def refresh_docs_list(self):
         self.docs_list.clear()
@@ -220,6 +295,7 @@ class InfoTab(QWidget):
         all_docs.extend(json.loads(self.data['fotos'] or '[]'))
         if self.data['certificado_cat']: all_docs.append(self.data['certificado_cat'])
         if self.data['defect_report_final']: all_docs.append(self.data['defect_report_final'])
+        # Nota: vale_devolucion ya no es un archivo, es un checkbox
 
         for doc_path in all_docs:
             if doc_path: self.docs_list.addItem(doc_path)
@@ -246,7 +322,32 @@ class WorkTab(QWidget):
 
     def init_ui(self):
         layout = QVBoxLayout(self)
-        
+
+        # 1. Historial de Intervenciones (primero)
+        layout.addWidget(QLabel("<b>Historial de Intervenciones:</b>"))
+        self.log_model = QStandardItemModel()
+        self.log_view = QTableView()
+        self.log_view.setModel(self.log_model)
+        self.log_view.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.log_view.horizontalHeader().setStretchLastSection(True)
+        self.log_view.verticalHeader().setVisible(False)
+        layout.addWidget(self.log_view)
+        self.refresh_log_table()
+
+        # 2. Añadir nueva entrada al historial (segundo)
+        log_entry_layout = QHBoxLayout()
+        # Mejora: Permitir texto enriquecido
+        self.new_log_entry = QTextEdit()
+        self.new_log_entry.setAcceptRichText(True)
+        self.new_log_entry.setPlaceholderText("Escribe una nueva intervención aquí...")
+        self.new_log_entry.setFixedHeight(60)
+        add_log_button = QPushButton("Añadir al Historial")
+        add_log_button.clicked.connect(self.save_log_entry)
+        log_entry_layout.addWidget(self.new_log_entry)
+        log_entry_layout.addWidget(add_log_button)
+        layout.addLayout(log_entry_layout)
+
+        # 3 y 4. Estado y Observaciones de Salida
         work_form_layout = QFormLayout()
         self.estado_salida_combo = QComboBox()
         self.estado_salida_combo.addItems(["", "Útil", "Reparable", "Stamby", "Falto de material", "Baja", "Incompleto"])
@@ -255,63 +356,37 @@ class WorkTab(QWidget):
 
         self.obs_salida_text = QTextEdit(self.data['obs_salida'] or "")
         work_form_layout.addRow("Observaciones de Salida:", self.obs_salida_text)
-        
-        save_work_button = QPushButton("Guardar Cambios de Trabajo")
-        save_work_button.setMinimumWidth(200)
-        save_work_button.clicked.connect(self.save_work_changes)
-        work_form_layout.addRow(save_work_button)
         layout.addLayout(work_form_layout)
 
-        layout.addWidget(QLabel("<b>Historial de Intervenciones:</b>"))
-        self.log_model = QStandardItemModel()
-        self.log_view = QTableView()
-        self.log_view.setModel(self.log_model)
-        self.log_view.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.log_view.horizontalHeader().setStretchLastSection(True)
-        layout.addWidget(self.log_view)
-        self.refresh_log_table()
+        # 5. Botones de acción agrupados al final
+        bottom_layout = QHBoxLayout()
 
-        log_entry_layout = QHBoxLayout()
-        self.new_log_entry = QTextEdit()
-        self.new_log_entry.setPlaceholderText("Escribe una nueva intervención aquí...")
-        self.new_log_entry.setFixedHeight(60)
-        add_log_button = QPushButton("Añadir al Historial")
-        add_log_button.setMinimumWidth(150)
-        add_log_button.clicked.connect(self.save_log_entry)
-        log_entry_layout.addWidget(self.new_log_entry)
-        log_entry_layout.addWidget(add_log_button)
-        layout.addLayout(log_entry_layout)
-
-        bottom_layout = QHBoxLayout()        
-        file_frame = QWidget()
-        file_frame_layout = QGridLayout(file_frame)
-        file_frame_layout.setContentsMargins(0,0,0,0)
-        
         btn_docs = QPushButton("Subir documentos escaneados")
-        btn_docs.setMinimumWidth(200)
         btn_docs.clicked.connect(lambda: self.add_files("Seleccionar documentos escaneados"))
-        file_frame_layout.addWidget(btn_docs, 0, 0)
 
         btn_fotos = QPushButton("Añadir Fotos")
-        btn_fotos.setMinimumWidth(200)
         btn_fotos.clicked.connect(lambda: self.add_files("Seleccionar Fotos", [("Archivos de Imagen", "*.jpg *.jpeg *.png *.gif")]))
-        file_frame_layout.addWidget(btn_fotos, 0, 1)
 
         material_button = QPushButton("Solicitar Material")
-        material_button.setMinimumWidth(200)
         material_button.clicked.connect(self.open_material_request)
-        
-        bottom_layout.addWidget(file_frame)
+
+        save_work_button = QPushButton("Guardar Cambios de Trabajo")
+        save_work_button.clicked.connect(self.save_work_changes)
+
+        bottom_layout.addWidget(btn_docs)
+        bottom_layout.addWidget(btn_fotos)
         bottom_layout.addWidget(material_button)
+        bottom_layout.addWidget(save_work_button)
         layout.addLayout(bottom_layout)
 
         # --- Orden de Tabulación ---
-        self.setTabOrder(self.estado_salida_combo, self.obs_salida_text)
-        self.setTabOrder(self.obs_salida_text, save_work_button)
-        self.setTabOrder(save_work_button, self.new_log_entry)
         self.setTabOrder(self.new_log_entry, add_log_button)
-        self.setTabOrder(add_log_button, btn_docs)
+        self.setTabOrder(add_log_button, self.estado_salida_combo)
+        self.setTabOrder(self.estado_salida_combo, self.obs_salida_text)
+        self.setTabOrder(self.obs_salida_text, btn_docs)
         self.setTabOrder(btn_docs, btn_fotos)
+        self.setTabOrder(btn_fotos, material_button)
+        self.setTabOrder(material_button, save_work_button)
 
     def add_files(self, title, filetypes=None):
         file_filter = "Todos los archivos (*.*)"
@@ -349,7 +424,7 @@ class WorkTab(QWidget):
         self.update_field_in_db(['estado_salida', 'obs_salida'], [estado_salida, obs_salida])
 
     def save_log_entry(self):
-        new_entry = self.new_log_entry.toPlainText().strip()
+        new_entry = self.new_log_entry.toHtml().strip() # Mejora: Guardar como HTML
         if not new_entry: return
 
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -362,6 +437,7 @@ class WorkTab(QWidget):
         updated_log_json = json.dumps(current_log_list, indent=2)
 
         self.update_field_in_db('log_trabajo', updated_log_json)
+        self.new_log_entry.clear() # Limpiar el campo después de guardar
 
     def open_material_request(self):
         dialog = MaterialRequestDialog(self.data, self)
@@ -441,17 +517,11 @@ class CloseTab(QWidget):
         action_layout.addStretch()
         layout.addLayout(action_layout)
 
-        # --- Documentación Final ---
-        doc_layout = QHBoxLayout()
-        doc_cat_button = QPushButton("Subir Certificado CAT (si es Útil)")
-        doc_cat_button.setMinimumWidth(220)
-        doc_cat_button.clicked.connect(lambda: self.upload_final_doc("cat"))
-        doc_dr_button = QPushButton("Subir DR Final (si es Reparable)")
-        doc_dr_button.setMinimumWidth(220)
-        doc_dr_button.clicked.connect(lambda: self.upload_final_doc("dr"))
-        doc_layout.addWidget(doc_cat_button)
-        doc_layout.addWidget(doc_dr_button)
-        layout.addLayout(doc_layout)
+        # Nota informativa sobre documentación final
+        info_label = QLabel("<b>Nota:</b> La documentación final (CAT/DR) y el vale de devolución se gestionan en la pestaña 'Salida de Inventario'.")
+        info_label.setWordWrap(True)
+        info_label.setStyleSheet("color: #666; font-style: italic;")
+        layout.addWidget(info_label)
 
         # --- Orden de Tabulación ---
         if not is_closed:
@@ -464,6 +534,7 @@ class CloseTab(QWidget):
         layout.addStretch()
         
         self.update_ui_state() # Llamada inicial para establecer la visibilidad correcta
+        self._update_field_states() # Llamada inicial para el estado de los campos
 
     def save_and_close(self):
         if not self.data['estado_salida']:
@@ -525,31 +596,6 @@ class CloseTab(QWidget):
         ])
         send_email_notification(subject, body)
 
-    def upload_final_doc(self, doc_type):
-        if not self.data['cerrado']:
-            QMessageBox.warning(self, "Equipo no cerrado", "Debe cerrar el equipo antes de subir la documentación final.")
-            return
-        
-        estado_salida = self.data['estado_salida']
-        if doc_type == 'cat' and estado_salida != 'Útil':
-            QMessageBox.critical(self, "Validación Fallida", "Solo se puede subir un CAT para equipos con estado 'Útil'.")
-            return
-        if doc_type == 'dr' and estado_salida != 'Reparable':
-            QMessageBox.critical(self, "Validación Fallida", "Solo se puede subir un DR Final para equipos con estado 'Reparable'.")
-            return
-
-        path, _ = QFileDialog.getOpenFileName(self, f"Seleccionar documento {'CAT' if doc_type == 'cat' else 'DR Final'}")
-        if not path: return
-        
-        new_path = copy_document(path, self.data['doc_folder_path'])
-        if not new_path: return
-
-        field_to_update = "certificado_cat" if doc_type == 'cat' else "defect_report_final"
-        query = f"UPDATE equipos SET {field_to_update} = ? WHERE id = ?"
-        
-        if self.db.execute_query(query, (new_path, self.data['id'])) is not None:
-            QMessageBox.information(self, "Éxito", "Documento final subido correctamente.")
-            self.data_changed.emit()
 
     def update_data(self, new_data):
         self.data = new_data
@@ -565,6 +611,7 @@ class CloseTab(QWidget):
         self.obs_cierre_text.setPlainText(self.data['obs_cierre'] or "")
         self.obs_cierre_text.setDisabled(is_closed)
 
+        self._update_field_states()
         self.update_ui_state()
         
     def update_ui_state(self):
@@ -574,8 +621,18 @@ class CloseTab(QWidget):
         self.closed_label.setText(f"<b>Equipo cerrado el: {self.data['fecha_cierre']}</b>" if is_closed else "")
         self.closed_label.setVisible(is_closed)
 
+    def _update_field_states(self):
+        """Habilita o deshabilita campos específicos según la lógica de negocio."""
+        is_closed = bool(self.data['cerrado'])
+        is_reparable = self.data['estado_salida'] == 'Reparable'
+
+        # El campo 'destino' solo es editable si el equipo no está cerrado Y su estado es 'Reparable'
+        self.close_entries['destino'].setDisabled(is_closed or not is_reparable)
+
+
+
 class ExitTab(QWidget):
-    """Pestaña para marcar la salida del equipo del inventario."""
+    """Pestaña para gestionar la documentación final y salida del equipo del inventario."""
     data_changed = pyqtSignal()
 
     def __init__(self, db_session, data, parent=None):
@@ -586,30 +643,137 @@ class ExitTab(QWidget):
 
     def init_ui(self):
         layout = QVBoxLayout(self)
-        self.exit_label = QLabel()
-        self.exit_button = QPushButton("Confirmar Salida de Inventario")
-        self.exit_button.setMinimumWidth(220)
-        self.exit_button.clicked.connect(self.mark_as_exited)
         
-        layout.addWidget(self.exit_label)
+        # Información del estado actual
+        self.status_label = QLabel()
+        layout.addWidget(self.status_label)
+        
+        # Sección de documentación final
+        doc_group = QWidget()
+        doc_layout = QVBoxLayout(doc_group)
+        
+        doc_title = QLabel("<b>Documentación Final Requerida:</b>")
+        doc_layout.addWidget(doc_title)
+        
+        # Documentos según el estado de salida
+        self.doc_buttons_layout = QHBoxLayout()
+        doc_layout.addLayout(self.doc_buttons_layout)
+        
+        # Vale de devolución (checkbox)
+        vale_layout = QHBoxLayout()
+        self.vale_checkbox = QCheckBox("Vale de Devolución")
+        self.vale_checkbox.stateChanged.connect(self.on_vale_changed)
+        vale_layout.addWidget(self.vale_checkbox)
+        vale_layout.addStretch()
+        doc_layout.addLayout(vale_layout)
+        
+        # Estado actual de documentos
+        self.doc_status_layout = QVBoxLayout()
+        doc_layout.addWidget(QLabel("<b>Estado de Documentos:</b>"))
+        doc_layout.addLayout(self.doc_status_layout)
+        
+        layout.addWidget(doc_group)
+        
+        # Separador
+        separator = QLabel("─" * 50)
+        separator.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(separator)
+        
+        # Botón de salida
+        self.exit_button = QPushButton("Confirmar Salida de Inventario")
+        self.exit_button.setMinimumWidth(250)
+        self.exit_button.setStyleSheet("QPushButton { background-color: #dc3545; color: white; font-weight: bold; }")
+        self.exit_button.clicked.connect(self.mark_as_exited)
         layout.addWidget(self.exit_button)
+        
         layout.addStretch()
         
         self.update_ui_state()
 
+    def on_vale_changed(self, state):
+        """Maneja el cambio del checkbox del vale de devolución."""
+        vale_disponible = state == Qt.CheckState.Checked.value
+        query = "UPDATE equipos SET vale_devolucion = ? WHERE id = ?"
+        params = ("1" if vale_disponible else "0", self.data['id'])
+        
+        if self.db.execute_query(query, params) is not None:
+            # Actualizar datos locales
+            self.data['vale_devolucion'] = "1" if vale_disponible else "0"
+            self._update_document_status()
+
+    def upload_document(self, doc_type):
+        """Sube un documento según el tipo especificado."""
+        if not self.data['cerrado']:
+            QMessageBox.warning(self, "Equipo no cerrado", "Debe cerrar el equipo antes de subir la documentación final.")
+            return
+        
+        estado_salida = self.data['estado_salida']
+        
+        # Validaciones específicas por tipo de documento
+        if doc_type == 'certificado_cat':
+            if estado_salida != 'Útil':
+                QMessageBox.critical(self, "Validación Fallida", "Solo se puede subir un CAT para equipos con estado 'Útil'.")
+                return
+            title = "Seleccionar Certificado CAT"
+        elif doc_type == 'defect_report_final':
+            if estado_salida != 'Reparable':
+                QMessageBox.critical(self, "Validación Fallida", "Solo se puede subir un DR Final para equipos con estado 'Reparable'.")
+                return
+            title = "Seleccionar DR Final"
+        elif doc_type == 'vale_devolucion':
+            title = "Seleccionar Vale de Devolución"
+        else:
+            QMessageBox.critical(self, "Error", "Tipo de documento no válido.")
+            return
+
+        path, _ = QFileDialog.getOpenFileName(self, title)
+        if not path: 
+            return
+        
+        new_path = copy_document(path, self.data['doc_folder_path'])
+        if not new_path: 
+            return
+
+        query = f"UPDATE equipos SET {doc_type} = ? WHERE id = ?"
+        
+        if self.db.execute_query(query, (new_path, self.data['id'])) is not None:
+            QMessageBox.information(self, "Éxito", f"Documento subido correctamente.")
+            self.data_changed.emit()
+
     def mark_as_exited(self):
+        """Marca el equipo como fuera de inventario con todas las validaciones."""
         estado = self.data['estado_salida']
-        if estado == 'Útil' and not self.data['certificado_cat']:
-            QMessageBox.critical(self, "Validación Fallida", "No se puede dar salida. Falta el Certificado CAT.")
-            return
-        if estado == 'Reparable' and not self.data['defect_report_final']:
-            QMessageBox.critical(self, "Validación Fallida", "No se puede dar salida. Falta el DR Final.")
-            return
+        
+        # Validaciones básicas
         if not estado:
             QMessageBox.critical(self, "Validación Fallida", "El equipo no tiene un 'Estado de Salida' definido.")
             return
+        
+        if not self.data['cerrado']:
+            QMessageBox.critical(self, "Validación Fallida", "El equipo debe estar cerrado antes de dar salida.")
+            return
+        
+        # Validaciones de documentos según estado
+        missing_docs = []
+        
+        if estado == 'Útil' and not self.data['certificado_cat']:
+            missing_docs.append("Certificado CAT")
+        
+        if estado == 'Reparable' and not self.data['defect_report_final']:
+            missing_docs.append("DR Final")
+        
+        # Validar vale de devolución (checkbox marcado)
+        if not self.vale_checkbox.isChecked():
+            missing_docs.append("Vale de Devolución (debe estar marcado)")
+        
+        if missing_docs:
+            QMessageBox.critical(self, "Validación Fallida", 
+                f"No se puede dar salida. Faltan los siguientes documentos:\n\n• " + "\n• ".join(missing_docs))
+            return
 
-        reply = QMessageBox.question(self, "Confirmar Salida", "¿Está seguro? Esta acción no se puede deshacer.")
+        reply = QMessageBox.question(self, "Confirmar Salida", 
+            "¿Está seguro de dar salida al equipo?\n\nEsta acción no se puede deshacer.")
+        
         if reply == QMessageBox.StandardButton.Yes:
             query = "UPDATE equipos SET inventario = 0, fecha_salida = ? WHERE id = ?"
             params = (datetime.now().strftime("%Y-%m-%d %H:%M"), self.data['id'])
@@ -622,12 +786,74 @@ class ExitTab(QWidget):
         self.update_ui_state()
 
     def update_ui_state(self):
-        """Actualiza la visibilidad de los widgets según el estado de inventario."""
+        """Actualiza la interfaz según el estado del equipo."""
         is_in_inventory = bool(self.data['inventario'])
+        estado_salida = self.data['estado_salida']
+        
+        # Actualizar botón de salida
         self.exit_button.setVisible(is_in_inventory)
         
-        label_text = "Marcar este equipo como 'Fuera de Inventario'." if is_in_inventory else f"<b>Este equipo salió del inventario el {self.data['fecha_salida']}.</b>"
-        self.exit_label.setText(label_text)
+        # Actualizar estado general
+        if is_in_inventory:
+            self.status_label.setText(f"<b>Estado:</b> En inventario - {estado_salida or 'Sin estado de salida'}")
+        else:
+            self.status_label.setText(f"<b>Este equipo salió del inventario el {self.data['fecha_salida']}.</b>")
+        
+        # Actualizar checkbox del vale de devolución
+        vale_disponible = self.data['vale_devolucion'] == "1"
+        self.vale_checkbox.setChecked(vale_disponible)
+        
+        # Actualizar botones de documentos según estado de salida
+        self._update_document_buttons()
+        
+        # Actualizar estado de documentos
+        self._update_document_status()
+
+    def _update_document_buttons(self):
+        """Actualiza los botones de documentos según el estado de salida."""
+        # Limpiar layout existente
+        for i in reversed(range(self.doc_buttons_layout.count())):
+            child = self.doc_buttons_layout.itemAt(i).widget()
+            if child:
+                child.setParent(None)
+        
+        estado_salida = self.data['estado_salida']
+        
+        if estado_salida == 'Útil':
+            cat_button = QPushButton("Subir Certificado CAT")
+            cat_button.setMinimumWidth(200)
+            cat_button.clicked.connect(lambda: self.upload_document("certificado_cat"))
+            self.doc_buttons_layout.addWidget(cat_button)
+        elif estado_salida == 'Reparable':
+            dr_button = QPushButton("Subir DR Final")
+            dr_button.setMinimumWidth(200)
+            dr_button.clicked.connect(lambda: self.upload_document("defect_report_final"))
+            self.doc_buttons_layout.addWidget(dr_button)
+
+    def _update_document_status(self):
+        """Actualiza el estado visual de los documentos."""
+        # Limpiar layout existente
+        for i in reversed(range(self.doc_status_layout.count())):
+            child = self.doc_status_layout.itemAt(i).widget()
+            if child:
+                child.setParent(None)
+        
+        estado_salida = self.data['estado_salida']
+        
+        # Estado del vale de devolución (siempre requerido)
+        vale_status = "✅ Disponible" if self.data['vale_devolucion'] == "1" else "❌ No disponible"
+        vale_label = QLabel(f"• Vale de Devolución: {vale_status}")
+        self.doc_status_layout.addWidget(vale_label)
+        
+        # Estado de documentos específicos según estado de salida
+        if estado_salida == 'Útil':
+            cat_status = "✅ Subido" if self.data['certificado_cat'] else "❌ Pendiente"
+            cat_label = QLabel(f"• Certificado CAT: {cat_status}")
+            self.doc_status_layout.addWidget(cat_label)
+        elif estado_salida == 'Reparable':
+            dr_status = "✅ Subido" if self.data['defect_report_final'] else "❌ Pendiente"
+            dr_label = QLabel(f"• DR Final: {dr_status}")
+            self.doc_status_layout.addWidget(dr_label)
 
 
 class ManageEquipmentDialog(QDialog):
@@ -656,12 +882,15 @@ class ManageEquipmentDialog(QDialog):
         self.create_tabs()
 
     def load_data(self):
-        self.data = self.db.fetch_query("SELECT * FROM equipos WHERE id = ?", (self.record_id,), one=True)
-        if not self.data:
+        record = self.db.fetch_query("SELECT * FROM equipos WHERE id = ?", (self.record_id,), one=True)
+        if not record:
             QMessageBox.critical(self, "Error", "No se pudo cargar el equipo.")
             # Cierra el diálogo si no hay datos
             self.reject()
             return
+        # Convertir sqlite3.Row a un diccionario mutable para poder modificarlo en memoria
+        self.data = dict(record)
+
         self.setWindowTitle(f"Gestionar Equipo - SN: {self.data['sn']} (OT: {self.data['numero_ot']})")
 
     def create_tabs(self):
@@ -674,7 +903,7 @@ class ManageEquipmentDialog(QDialog):
 
         self.close_tab = CloseTab(self.db, self.data)
         self.close_tab.data_changed.connect(self.on_child_data_changed)
-        self.tabs.addTab(self.close_tab, 'Cierre y Documentación')
+        self.tabs.addTab(self.close_tab, 'Cierre')
 
         self.exit_tab = ExitTab(self.db, self.data)
         self.exit_tab.data_changed.connect(self.on_child_data_changed)

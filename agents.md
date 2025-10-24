@@ -24,11 +24,11 @@ This section details the role of each significant file and directory in the proj
 ### `/` (Root Directory)
 
 - **`main_pyqt.py`**: **(Primary Entry Point)** This is the main script to run the application. It initializes the application, sets up the main window (`MainWindow`), connects signals/slots, and handles high-level application logic like data refreshing and report generation.
-- **`pyqt_windows.py`**: **(UI Components)** Contains the definitions for all secondary windows and dialogs. This includes `EntryDialog` for new equipment, `ProductivityChartDialog` for displaying graphs, and the refactored `ManageEquipmentDialog`, which now acts as an orchestrator for its tab widgets (`InfoTab`, `WorkTab`, `CloseTab`, `ExitTab`).
+- **`pyqt_windows.py`**: **(UI Components)** Contains the definitions for all secondary windows and dialogs. This includes `EntryDialog` (with real-time validation and autocomplete), `ProductivityChartDialog`, and `ManageEquipmentDialog` (with its tabs: `InfoTab` with context menus, `WorkTab` with rich text support, `CloseTab`, and `ExitTab`).
 
 - **`database_improved.py`**: **(Data Layer)** Defines the `Database` class, which abstracts all interactions with the SQLite database. It handles connections, executing queries (SELECT, INSERT, UPDATE), and error handling.
 
-- **`file_utils.py`**: **(File System Logic)** Contains helper functions for file operations, such as `copy_document` (which handles creating versioned folders) and `open_file` (for opening documents with the default system application).
+- **`file_utils.py`**: **(File System Logic)** Contains helper functions for file operations, such as `copy_document`, `open_file`, `create_database_backup` (for zipping the DB), and `restore_database_from_backup` (for safely replacing the DB).
 
 - **`email_utils.py`**: **(Communication Logic)** Provides the `send_email_notification` function. It's designed to open the user's default web browser (specifically Gmail) with a pre-filled draft, avoiding the need for SMTP credential management.
 
@@ -83,3 +83,4 @@ This is a **dynamically generated directory**. The application creates it on fir
 - **`control_equipos.db`**: The SQLite database file. Created on the first run.
 - **`docs/`**: The directory for user-uploaded documents. Created on the first run.
 - **`control_equipos.log`**: The log file where all application events and errors are recorded.
+- **`backups/`**: A dynamically generated directory to store compressed database backups.

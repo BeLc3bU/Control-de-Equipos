@@ -5,7 +5,8 @@ import os
 import shutil
 import subprocess
 import sys
-from typing import Optional
+from datetime import datetime
+import zipfile
 from logger import logger
 from validators import Validator
 from ui_utils import show_error, show_warning, show_info
@@ -98,3 +99,71 @@ def open_file(path: str):
     except Exception as e:
         logger.error(f"Error al abrir archivo {path}: {e}")
         show_error("Error al abrir", f"No se pudo abrir el archivo:\n{e}")
+
+def create_database_backup(db_path: str, backup_dir: str = "backups") -> str:
+    """
+    Crea una copia de seguridad comprimida de la base de datos en un archivo .zip.
+
+    Args:
+        db_path: Ruta al archivo de la base de datos a respaldar.
+        backup_dir: Directorio donde se guardarán las copias.
+
+    Returns:
+        La ruta al archivo de copia de seguridad creado.
+        
+    Raises:
+        FileNotFoundError: Si el archivo de la base de datos no existe.
+        IOError: Si hay problemas al escribir el archivo de backup.
+    """
+    if not os.path.exists(db_path):
+        raise FileNotFoundError(f"El archivo de la base de datos no se encontró en: {db_path}")
+
+    os.makedirs(backup_dir, exist_ok=True)
+    
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    db_filename = os.path.basename(db_path)
+    backup_filename = f"backup_{db_filename.replace('.db', '')}_{timestamp}.zip"
+    backup_filepath = os.path.join(backup_dir, backup_filename)
+
+    with zipfile.ZipFile(backup_filepath, 'w', zipfile.ZIP_DEFLATED) as zf:
+        zf.write(db_path, os.path.basename(db_path))
+    
+    return backup_filepath
+
+def restore_database_from_backup(zip_path: str, db_path: str):
+    """
+    Restaura la base de datos desde un archivo .zip de copia de seguridad.
+
+    Args:
+        zip_path: Ruta al archivo .zip de la copia de seguridad.
+        db_path: Ruta al archivo de la base de datos actual que será reemplazado.
+
+    Raises:
+        Exception: Si ocurre algún error durante el proceso de restauración.
+    """
+    db_old_path = f"{db_path}.old"
+    
+    # 1. Verificar que el backup existe
+    if not os.path.exists(zip_path):
+        raise FileNotFoundError("El archivo de copia de seguridad no existe.")
+
+    # 2. Renombrar la base de datos actual como medida de seguridad
+    if os.path.exists(db_path):
+        try:
+            os.rename(db_path, db_old_path)
+            logger.info(f"Base de datos actual renombrada a {db_old_path}")
+        except OSError as e:
+            raise IOError(f"No se pudo renombrar la base de datos actual. Asegúrate de que no esté en uso. Error: {e}")
+
+    # 3. Extraer la base de datos del archivo .zip
+    try:
+        with zipfile.ZipFile(zip_path, 'r') as zf:
+            # Asumimos que el .zip contiene un solo archivo .db
+            db_filename_in_zip = [name for name in zf.namelist() if name.endswith('.db')][0]
+            zf.extract(db_filename_in_zip, os.path.dirname(db_path))
+            logger.info(f"Base de datos restaurada desde {zip_path}")
+    except Exception as e:
+        # Si la extracción falla, intentar restaurar la BD original
+        if os.path.exists(db_old_path):
+            os.rename(db_old_path, db_path)
+        raise IOError(f"Error al extraer la copia de seguridad: {e}. Se ha intentado restaurar la BD original.")

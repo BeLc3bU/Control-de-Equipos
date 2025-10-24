@@ -224,3 +224,171 @@
 2025-10-04 09:08:32 - ControlEquipos - INFO - Estructura de base de datos verificada/creada
 2025-10-04 09:08:32 - ControlEquipos - INFO - Entorno configurado correctamente para PyQt.
 2025-10-04 09:08:32 - ControlEquipos - INFO - Multithreading con un máximo de 4 hilos.
+2025-10-09 07:58:37 - ControlEquipos - INFO - Inicializando base de datos: control_equipos.db
+2025-10-09 07:58:37 - ControlEquipos - INFO - Estructura de base de datos verificada/creada
+2025-10-09 07:58:37 - ControlEquipos - INFO - Entorno configurado correctamente para PyQt.
+2025-10-09 07:58:38 - ControlEquipos - INFO - Multithreading con un máximo de 4 hilos.
+2025-10-14 10:28:11 - ControlEquipos - INFO - Inicializando base de datos: control_equipos.db
+2025-10-14 10:28:11 - ControlEquipos - INFO - Estructura de base de datos verificada/creada
+2025-10-14 10:28:11 - ControlEquipos - INFO - Entorno configurado correctamente para PyQt.
+2025-10-14 10:28:11 - ControlEquipos - INFO - Multithreading con un máximo de 4 hilos.
+2025-10-20 01:32:47 - ControlEquipos - INFO - Inicializando base de datos: control_equipos.db
+2025-10-20 01:32:47 - ControlEquipos - INFO - Estructura de base de datos verificada/creada
+2025-10-20 01:32:47 - ControlEquipos - INFO - Entorno configurado correctamente para PyQt.
+2025-10-20 01:32:48 - ControlEquipos - INFO - Multithreading con un máximo de 4 hilos.
+2025-10-20 01:39:08 - ControlEquipos - INFO - setup_logger:43 - Iniciando sesión de logging - PID: 6932
+2025-10-20 01:39:09 - ControlEquipos - INFO - __init__:14 - Inicializando base de datos: test_control_equipos.db
+2025-10-20 01:39:09 - ControlEquipos - ERROR - execute_query:45 - Error en execute_query: You can only execute one statement at a time.
+Query: 
+        CREATE TABLE IF NOT EXISTS equipos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre_equipo TEXT,
+            pn TEXT NOT NULL,
+            sn TEXT NOT NULL,
+            estado_entrada TEXT,
+            numero_ot TEXT NOT NULL UNIQUE,
+            defect_report TEXT,
+            obs_entrada TEXT,
+            fecha_entrada TEXT,
+            doc_entrada TEXT,
+            fotos TEXT,
+            estado_salida TEXT,
+            log_trabajo TEXT,
+            obs_salida TEXT,
+            cerrado INTEGER DEFAULT 0,
+            fecha_cierre TEXT,
+            contenedor INTEGER,
+            destino TEXT,
+            horas_trabajo REAL,
+            obs_cierre TEXT,
+            certificado_cat TEXT,
+            defect_report_final TEXT,
+            fecha_salida TEXT,
+            inventario INTEGER DEFAULT 1,
+            doc_folder_path TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        
+        -- Crear índices para mejorar el rendimiento
+        CREATE INDEX IF NOT EXISTS idx_equipos_numero_ot ON equipos(numero_ot);
+        CREATE INDEX IF NOT EXISTS idx_equipos_pn_sn ON equipos(pn, sn);
+        CREATE INDEX IF NOT EXISTS idx_equipos_inventario ON equipos(inventario);
+        CREATE INDEX IF NOT EXISTS idx_equipos_fecha_entrada ON equipos(fecha_entrada);
+        CREATE INDEX IF NOT EXISTS idx_equipos_fecha_cierre ON equipos(fecha_cierre);
+        
+Params: ()
+2025-10-20 01:40:02 - ControlEquipos - INFO - setup_logger:43 - Iniciando sesión de logging - PID: 16396
+2025-10-20 01:40:03 - ControlEquipos - INFO - __init__:14 - Inicializando base de datos: test_control_equipos.db
+2025-10-20 01:40:03 - ControlEquipos - INFO - setup:160 - Estructura de base de datos verificada/creada
+2025-10-20 01:40:41 - ControlEquipos - INFO - setup_logger:43 - Iniciando sesión de logging - PID: 13020
+2025-10-20 01:40:42 - ControlEquipos - INFO - __init__:14 - Inicializando base de datos: test_control_equipos.db
+2025-10-20 01:40:42 - ControlEquipos - INFO - setup:160 - Estructura de base de datos verificada/creada
+2025-10-20 01:40:42 - ControlEquipos - WARNING - execute_query:41 - Error de integridad en BD: UNIQUE constraint failed: equipos.numero_ot
+2025-10-20 01:42:30 - ControlEquipos - INFO - setup_logger:43 - Iniciando sesión de logging - PID: 20200
+2025-10-20 01:42:31 - ControlEquipos - INFO - __init__:14 - Inicializando base de datos: control_equipos.db
+2025-10-20 01:42:31 - ControlEquipos - INFO - setup:160 - Estructura de base de datos verificada/creada
+2025-10-20 01:42:31 - ControlEquipos - INFO - setup_environment:32 - Entorno configurado correctamente para PyQt.
+2025-10-20 01:42:31 - ControlEquipos - INFO - __init__:77 - Multithreading con un máximo de 4 hilos.
+2025-10-20 01:49:21 - ControlEquipos - INFO - setup_logger:43 - Iniciando sesión de logging - PID: 16628
+2025-10-20 01:49:30 - ControlEquipos - INFO - __init__:14 - Inicializando base de datos: control_equipos.db
+2025-10-20 01:49:30 - ControlEquipos - INFO - _migrate_add_vale_devolucion:178 - Añadiendo campo 'vale_devolucion' a la tabla equipos...
+2025-10-20 01:49:30 - ControlEquipos - INFO - _migrate_add_vale_devolucion:180 - Campo 'vale_devolucion' añadido exitosamente
+2025-10-20 01:49:30 - ControlEquipos - INFO - setup:164 - Estructura de base de datos verificada/creada
+2025-10-20 01:49:30 - ControlEquipos - INFO - setup_environment:32 - Entorno configurado correctamente para PyQt.
+2025-10-20 01:49:30 - ControlEquipos - INFO - __init__:77 - Multithreading con un máximo de 4 hilos.
+2025-10-20 01:55:26 - ControlEquipos - INFO - setup_logger:43 - Iniciando sesión de logging - PID: 10960
+2025-10-20 01:55:34 - ControlEquipos - INFO - __init__:14 - Inicializando base de datos: control_equipos.db
+2025-10-20 01:55:34 - ControlEquipos - INFO - setup:164 - Estructura de base de datos verificada/creada
+2025-10-20 01:55:34 - ControlEquipos - INFO - setup_environment:32 - Entorno configurado correctamente para PyQt.
+2025-10-20 01:55:34 - ControlEquipos - INFO - __init__:77 - Multithreading con un máximo de 4 hilos.
+2025-10-20 01:55:56 - ControlEquipos - INFO - setup_logger:43 - Iniciando sesión de logging - PID: 9804
+2025-10-20 01:55:57 - ControlEquipos - INFO - __init__:14 - Inicializando base de datos: control_equipos.db
+2025-10-20 01:55:57 - ControlEquipos - INFO - setup:164 - Estructura de base de datos verificada/creada
+2025-10-20 01:55:57 - ControlEquipos - INFO - setup_environment:32 - Entorno configurado correctamente para PyQt.
+2025-10-20 01:55:57 - ControlEquipos - INFO - __init__:77 - Multithreading con un máximo de 4 hilos.
+2025-10-20 01:57:17 - ControlEquipos - INFO - setup_logger:43 - Iniciando sesión de logging - PID: 19512
+2025-10-20 01:57:24 - ControlEquipos - INFO - __init__:14 - Inicializando base de datos: control_equipos.db
+2025-10-20 01:57:24 - ControlEquipos - INFO - setup:164 - Estructura de base de datos verificada/creada
+2025-10-20 01:57:24 - ControlEquipos - INFO - setup_environment:32 - Entorno configurado correctamente para PyQt.
+2025-10-20 01:57:24 - ControlEquipos - INFO - __init__:77 - Multithreading con un máximo de 4 hilos.
+2025-10-20 02:02:13 - ControlEquipos - INFO - setup_logger:43 - Iniciando sesión de logging - PID: 3928
+2025-10-20 02:02:17 - ControlEquipos - INFO - __init__:14 - Inicializando base de datos: control_equipos.db
+2025-10-20 02:02:17 - ControlEquipos - INFO - setup:164 - Estructura de base de datos verificada/creada
+2025-10-20 02:02:17 - ControlEquipos - INFO - setup_environment:32 - Entorno configurado correctamente para PyQt.
+2025-10-20 02:02:18 - ControlEquipos - INFO - __init__:77 - Multithreading con un máximo de 4 hilos.
+2025-10-20 02:03:32 - ControlEquipos - INFO - setup_logger:43 - Iniciando sesión de logging - PID: 14800
+2025-10-20 02:03:34 - ControlEquipos - INFO - __init__:14 - Inicializando base de datos: control_equipos.db
+2025-10-20 02:03:34 - ControlEquipos - INFO - setup:164 - Estructura de base de datos verificada/creada
+2025-10-20 02:03:34 - ControlEquipos - INFO - setup_environment:32 - Entorno configurado correctamente para PyQt.
+2025-10-20 02:03:34 - ControlEquipos - INFO - __init__:77 - Multithreading con un máximo de 4 hilos.
+2025-10-20 02:08:36 - ControlEquipos - INFO - setup_logger:43 - Iniciando sesión de logging - PID: 5744
+2025-10-20 02:08:37 - ControlEquipos - INFO - __init__:14 - Inicializando base de datos: control_equipos.db
+2025-10-20 02:08:37 - ControlEquipos - INFO - setup:164 - Estructura de base de datos verificada/creada
+2025-10-20 02:08:37 - ControlEquipos - INFO - setup_environment:32 - Entorno configurado correctamente para PyQt.
+2025-10-20 02:08:38 - ControlEquipos - INFO - __init__:77 - Multithreading con un máximo de 4 hilos.
+2025-10-20 02:15:21 - ControlEquipos - INFO - setup_logger:43 - Iniciando sesión de logging - PID: 15944
+2025-10-20 02:15:22 - ControlEquipos - INFO - __init__:14 - Inicializando base de datos: control_equipos.db
+2025-10-20 02:15:22 - ControlEquipos - INFO - setup:164 - Estructura de base de datos verificada/creada
+2025-10-20 02:15:22 - ControlEquipos - INFO - setup_environment:32 - Entorno configurado correctamente para PyQt.
+2025-10-20 02:15:22 - ControlEquipos - INFO - __init__:77 - Multithreading con un máximo de 4 hilos.
+2025-10-20 02:17:17 - ControlEquipos - INFO - setup_logger:43 - Iniciando sesión de logging - PID: 20040
+2025-10-20 02:17:18 - ControlEquipos - INFO - __init__:14 - Inicializando base de datos: control_equipos.db
+2025-10-20 02:17:18 - ControlEquipos - INFO - setup:164 - Estructura de base de datos verificada/creada
+2025-10-20 02:17:18 - ControlEquipos - INFO - setup_environment:32 - Entorno configurado correctamente para PyQt.
+2025-10-20 02:17:19 - ControlEquipos - INFO - __init__:77 - Multithreading con un máximo de 4 hilos.
+2025-10-20 02:18:53 - ControlEquipos - INFO - setup_logger:43 - Iniciando sesión de logging - PID: 14996
+2025-10-20 02:18:54 - ControlEquipos - INFO - __init__:14 - Inicializando base de datos: control_equipos.db
+2025-10-20 02:18:54 - ControlEquipos - INFO - setup:164 - Estructura de base de datos verificada/creada
+2025-10-20 02:18:54 - ControlEquipos - INFO - setup_environment:33 - Entorno configurado correctamente para PyQt.
+2025-10-20 02:18:54 - ControlEquipos - INFO - __init__:78 - Multithreading con un máximo de 4 hilos.
+2025-10-20 02:27:22 - ControlEquipos - INFO - setup_logger:43 - Iniciando sesión de logging - PID: 19512
+2025-10-20 02:27:23 - ControlEquipos - INFO - __init__:14 - Inicializando base de datos: control_equipos.db
+2025-10-20 02:27:23 - ControlEquipos - INFO - setup:164 - Estructura de base de datos verificada/creada
+2025-10-20 02:27:23 - ControlEquipos - INFO - setup_environment:33 - Entorno configurado correctamente para PyQt.
+2025-10-20 02:27:23 - ControlEquipos - INFO - __init__:78 - Multithreading con un máximo de 4 hilos.
+2025-10-20 02:29:17 - ControlEquipos - INFO - setup_logger:43 - Iniciando sesión de logging - PID: 10860
+2025-10-20 02:29:18 - ControlEquipos - INFO - __init__:14 - Inicializando base de datos: control_equipos.db
+2025-10-20 02:29:18 - ControlEquipos - INFO - setup:164 - Estructura de base de datos verificada/creada
+2025-10-20 02:29:18 - ControlEquipos - INFO - setup_environment:33 - Entorno configurado correctamente para PyQt.
+2025-10-20 02:29:18 - ControlEquipos - INFO - __init__:78 - Multithreading con un máximo de 4 hilos.
+2025-10-20 02:33:22 - ControlEquipos - INFO - setup_logger:43 - Iniciando sesión de logging - PID: 16032
+2025-10-20 02:33:23 - ControlEquipos - INFO - __init__:14 - Inicializando base de datos: control_equipos.db
+2025-10-20 02:33:23 - ControlEquipos - INFO - setup:164 - Estructura de base de datos verificada/creada
+2025-10-20 02:33:23 - ControlEquipos - INFO - setup_environment:33 - Entorno configurado correctamente para PyQt.
+2025-10-20 02:33:23 - ControlEquipos - INFO - __init__:78 - Multithreading con un máximo de 4 hilos.
+2025-10-20 02:36:40 - ControlEquipos - INFO - setup_logger:43 - Iniciando sesión de logging - PID: 17736
+2025-10-20 02:36:41 - ControlEquipos - INFO - __init__:14 - Inicializando base de datos: control_equipos.db
+2025-10-20 02:36:41 - ControlEquipos - INFO - setup:164 - Estructura de base de datos verificada/creada
+2025-10-20 02:36:41 - ControlEquipos - INFO - setup_environment:33 - Entorno configurado correctamente para PyQt.
+2025-10-20 02:36:41 - ControlEquipos - INFO - __init__:78 - Multithreading con un máximo de 4 hilos.
+2025-10-20 02:38:38 - ControlEquipos - INFO - setup_logger:43 - Iniciando sesión de logging - PID: 17348
+2025-10-20 02:38:40 - ControlEquipos - INFO - __init__:14 - Inicializando base de datos: control_equipos.db
+2025-10-20 02:38:40 - ControlEquipos - INFO - setup:164 - Estructura de base de datos verificada/creada
+2025-10-20 02:38:40 - ControlEquipos - INFO - setup_environment:33 - Entorno configurado correctamente para PyQt.
+2025-10-20 02:38:40 - ControlEquipos - INFO - __init__:78 - Multithreading con un máximo de 4 hilos.
+2025-10-20 02:40:35 - ControlEquipos - INFO - setup_logger:43 - Iniciando sesión de logging - PID: 19512
+2025-10-20 02:40:37 - ControlEquipos - INFO - __init__:14 - Inicializando base de datos: control_equipos.db
+2025-10-20 02:40:37 - ControlEquipos - INFO - setup:164 - Estructura de base de datos verificada/creada
+2025-10-20 02:40:37 - ControlEquipos - INFO - setup_environment:33 - Entorno configurado correctamente para PyQt.
+2025-10-20 02:40:37 - ControlEquipos - INFO - __init__:78 - Multithreading con un máximo de 4 hilos.
+2025-10-20 02:45:34 - ControlEquipos - INFO - setup_logger:43 - Iniciando sesión de logging - PID: 5328
+2025-10-20 02:45:35 - ControlEquipos - INFO - __init__:14 - Inicializando base de datos: control_equipos.db
+2025-10-20 02:45:35 - ControlEquipos - INFO - setup:164 - Estructura de base de datos verificada/creada
+2025-10-20 02:45:35 - ControlEquipos - INFO - setup_environment:33 - Entorno configurado correctamente para PyQt.
+2025-10-20 02:45:35 - ControlEquipos - INFO - __init__:78 - Multithreading con un máximo de 4 hilos.
+2025-10-23 10:38:30 - ControlEquipos - INFO - setup_logger:43 - Iniciando sesión de logging - PID: 1900
+2025-10-23 10:38:35 - ControlEquipos - INFO - __init__:14 - Inicializando base de datos: control_equipos.db
+2025-10-23 10:38:35 - ControlEquipos - INFO - setup:164 - Estructura de base de datos verificada/creada
+2025-10-23 10:38:35 - ControlEquipos - INFO - setup_environment:33 - Entorno configurado correctamente para PyQt.
+2025-10-23 10:38:35 - ControlEquipos - INFO - __init__:82 - Multithreading con un máximo de 4 hilos.
+2025-10-23 10:49:29 - ControlEquipos - INFO - setup_logger:43 - Iniciando sesión de logging - PID: 17148
+2025-10-23 10:49:30 - ControlEquipos - INFO - __init__:14 - Inicializando base de datos: control_equipos.db
+2025-10-23 10:49:30 - ControlEquipos - INFO - setup:164 - Estructura de base de datos verificada/creada
+2025-10-23 10:49:30 - ControlEquipos - INFO - setup_environment:33 - Entorno configurado correctamente para PyQt.
+2025-10-23 10:49:31 - ControlEquipos - INFO - __init__:82 - Multithreading con un máximo de 4 hilos.
+2025-10-23 11:10:17 - ControlEquipos - INFO - setup_logger:43 - Iniciando sesión de logging - PID: 10216
+2025-10-23 11:10:18 - ControlEquipos - INFO - __init__:14 - Inicializando base de datos: control_equipos.db
+2025-10-23 11:10:18 - ControlEquipos - INFO - setup:164 - Estructura de base de datos verificada/creada
+2025-10-23 11:10:18 - ControlEquipos - INFO - setup_environment:33 - Entorno configurado correctamente para PyQt.
+2025-10-23 11:10:18 - ControlEquipos - INFO - __init__:82 - Multithreading con un máximo de 4 hilos.

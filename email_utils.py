@@ -10,8 +10,9 @@ def send_email_notification(subject: str, body: str):
     El usuario deberá añadir el destinatario manualmente.
     """
     try:
-        encoded_subject = urllib.parse.quote(subject)
-        encoded_body = urllib.parse.quote(body)
+        # Codificar correctamente para URLs con UTF-8
+        encoded_subject = urllib.parse.quote(subject, safe='', encoding='utf-8')
+        encoded_body = urllib.parse.quote(body, safe='', encoding='utf-8')
         
         # El campo 'to' se deja vacío para que el usuario lo rellene.
         url = f"https://mail.google.com/mail/?view=cm&fs=1&su={encoded_subject}&body={encoded_body}"
